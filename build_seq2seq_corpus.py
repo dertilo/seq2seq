@@ -2,13 +2,14 @@ import os
 
 from tqdm import tqdm
 from transformers import BartTokenizer
-from typing import List
+from typing import List, NamedTuple
 from util import data_io
 
 
 def generate_coqa_seq2seq(file_name, hist_len=3):
 
-    data = data_io.read_json(os.environ["HOME"] + "/data/QA/coqa/" + file_name)["data"]
+    file = os.environ["HOME"] + "/data/QA/coqa/" + file_name
+    data = data_io.read_json(file)["data"]
 
     def get_history(l: List, k, hist_len):
         return [d["input_text"] for d in l[max(0, k - hist_len) : (k + 1)]]
@@ -24,9 +25,8 @@ def generate_coqa_seq2seq(file_name, hist_len=3):
 
 def generate_squad20_seq2seq(file_name):
 
-    data = data_io.read_json(os.environ["HOME"] + "/data/QA/SQUAD20/" + file_name)[
-        "data"
-    ]
+    file = os.environ["HOME"] + "/data/QA/SQUAD20/" + file_name
+    data = data_io.read_json(file)["data"]
     for datum in data:
         for p in datum["paragraphs"]:
             background = p["context"]
@@ -40,14 +40,25 @@ def generate_squad20_seq2seq(file_name):
                         yield dialogue, target
 
 
-def generate_personachat_seq2seq(file_name):
+class Turn(NamedTuple):
+    request: str
+    response: str
 
-    data = data_io.read_json(os.environ["HOME"] + "/data/QA/" + file_name)["train"]
+
+def generate_personachat_seq2seq(data_path=os.environ["HOME"] + "/data/QA"):
+    file_name = "personachat_self_original.json"
+    file = os.path.join(data_path, file_name)
+    data = data_io.read_json(file)["train"]
     for datum in data:
         background = " ".join(datum["personality"])
         for d in datum["utterances"]:
-            x = d["history"] + d["candidates"][-1:]
-            qas, aas = list(zip(*[x[k : k + 2] for k in range(0, len(x), 2)]))
+            last_candidate_is_the_right_one = d["candidates"][-1]
+            utterances = d["history"] + [last_candidate_is_the_right_one]
+            turns = [
+                Turn(request=utterances[k], response=utterances[k + 1])
+                for k in range(0, len(utterances), 2)
+            ]
+            qas, aas = [list(t) for t in zip(*turns)]
             dialogue, target = build_input_target(background, qas, aas, SEP)
             yield dialogue, target
 
@@ -69,10 +80,7 @@ SEP = tokenizer.special_tokens_map["sep_token"]
 if __name__ == "__main__":
     datagenerators = {
         "train": [
-            (
-                "personachat-train",
-                generate_personachat_seq2seq("personachat_self_original.json"),
-            ),
+            ("personachat-train", generate_personachat_seq2seq()),
             ("coqa-train", generate_coqa_seq2seq("coqa-train-v1.0.json")),
             ("squad20-train", generate_squad20_seq2seq("train-v2.0.json")),
         ],
@@ -90,5 +98,7 @@ if __name__ == "__main__":
         ) as t:
             for name, g in gs:
                 for k, (x, y) in enumerate(g):
-                    s.write(x + "\n")
-                    t.write(y + "\n")
+                    print((x, y))
+                    print()
+                    # s.write(x + "\n")
+                    # t.write(y + "\n")
