@@ -1,4 +1,5 @@
 import os
+from collections import namedtuple
 
 from tqdm import tqdm
 from transformers import BartTokenizer
@@ -32,34 +33,43 @@ def generate_coqa_seq2seq(file_name, hist_len=3):
             yield build_input_target(datum["story"], turns, SEP)
 
 
-def generate_topical_chat_seq2seq(file_name="train.json", hist_len=3):
+SILENCE = "<SILENCE>"
 
-    file = (
-        os.environ["HOME"]
-        + "/code/DIALOGUE/alexa-prize-topical-chat-dataset/conversations/"
-        + file_name
-    )
+
+def generate_topical_chat_seq2seq(
+    file_name="train.json",
+    data_path=os.environ["HOME"]
+    + "/code/DIALOGUE/alexa-prize-topical-chat-dataset/conversations",
+    hist_len=3,
+):
+
+    file = os.path.join(data_path, file_name)
     data = list(data_io.read_json(file).values())
+    Utt = namedtuple(
+        "Utterance",
+        "message agent sentiment knowledge_source turn_rating",
+        defaults=[SILENCE] + [None] * 4,
+    )
 
-    def build_turn(req, res):
-        assert req["agent"] != res["agent"]
-        return Turn(req["message"], res["message"])
+    def build_turn(req: Utt, res: Utt):
+        assert req.agent != res.agent
+        return Turn(req.message, res.message)
 
     def build_dialogues(utts):
-        assert len(utts) % 2 == 0
-        turns = [build_turn(utts[k], utts[k + 1]) for k in range(0, len(utts), 2)]
+        turns = [
+            build_turn(utts[k], utts[k + 1])
+            for k in range(0, len(utterances) // 2 * 2, 2)
+        ]
         background = ""
         for k in range(len(turns)):
             some_turns = get_limited_history(turns, k, hist_len)
             yield build_input_target(background, some_turns, SEP)
 
     for datum in data:
-        utterances = datum["content"]
-        yield from build_dialogues(utterances[0 : len(utterances) // 2 * 2])
-        utterance_switched_roles = utterances[1:]
-        yield from build_dialogues(
-            utterance_switched_roles[0 : len(utterance_switched_roles) // 2 * 2]
-        )
+        utterances = [Utt(**d) for d in datum["content"]]
+        yield from build_dialogues(utterances)
+        # insert silence utter to switch roles
+        yield from build_dialogues([Utt()] + utterances)
 
 
 def generate_squad20_seq2seq(file_name):
@@ -97,7 +107,7 @@ def build_input_target(background, turns: List[Turn], SEP_TOKEN):
     def process(s):
         return s.replace("\n", "")
 
-    turns = [process(x) for turn in turns for x in turn]
+    turns = [process(x) for turn in turns for x in turn if x != SILENCE]
     target = process(turns.pop(-1))
     dialogue = SEP_TOKEN.join([process(background)] + turns)
     return dialogue, target
