@@ -151,3 +151,13 @@ if __name__ == "__main__":
                     t.write(y + "\n")
                 num_samples = k
                 print("%s: %d" % (name, num_samples))
+'''
+corpora-sizes
+
+topicalchat-train: 182347
+personachat-train: 262875
+coqa-train: 108646
+squad20-train: 86820
+coqa-val: 7982
+squad20-val: 20301
+'''
