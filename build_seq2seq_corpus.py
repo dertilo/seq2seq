@@ -6,21 +6,26 @@ from typing import List, NamedTuple
 from util import data_io
 
 
+class Turn(NamedTuple):
+    request: str
+    response: str
+
+
 def generate_coqa_seq2seq(file_name, hist_len=3):
 
     file = os.environ["HOME"] + "/data/QA/coqa/" + file_name
     data = data_io.read_json(file)["data"]
 
-    def get_history(l: List, k, hist_len):
+    def get_limited_history(l: List, k, hist_len):
         return [d["input_text"] for d in l[max(0, k - hist_len) : (k + 1)]]
 
     for datum in data:
         dialogue_len = len(datum["questions"])
         for k in range(dialogue_len):
-            q_hist = get_history(datum["questions"], k, hist_len)
-            a_hist = get_history(datum["answers"], k, hist_len)
-            dialogue, target = build_input_target(datum["story"], q_hist, a_hist, SEP)
-            yield dialogue, target
+            q_hist = get_limited_history(datum["questions"], k, hist_len)
+            a_hist = get_limited_history(datum["answers"], k, hist_len)
+            turns = [Turn(req, res) for req, res in zip(q_hist, a_hist)]
+            yield build_input_target(datum["story"], turns, SEP)
 
 
 def generate_squad20_seq2seq(file_name):
@@ -34,15 +39,8 @@ def generate_squad20_seq2seq(file_name):
                 if not qa["is_impossible"]:
                     q = qa["question"]
                     for a in qa["answers"]:
-                        dialogue, target = build_input_target(
-                            background, [q], [a["text"]], SEP
-                        )
-                        yield dialogue, target
-
-
-class Turn(NamedTuple):
-    request: str
-    response: str
+                        turns = [Turn(q, a["text"])]
+                        yield build_input_target(background, turns, SEP)
 
 
 def generate_personachat_seq2seq(data_path=os.environ["HOME"] + "/data/QA"):
@@ -58,16 +56,14 @@ def generate_personachat_seq2seq(data_path=os.environ["HOME"] + "/data/QA"):
                 Turn(request=utterances[k], response=utterances[k + 1])
                 for k in range(0, len(utterances), 2)
             ]
-            qas, aas = [list(t) for t in zip(*turns)]
-            dialogue, target = build_input_target(background, qas, aas, SEP)
-            yield dialogue, target
+            yield build_input_target(background, turns, SEP)
 
 
-def build_input_target(background, q_hist: List[str], a_hist: List[str], SEP_TOKEN):
+def build_input_target(background, turns: List[Turn], SEP_TOKEN):
     def process(s):
         return s.replace("\n", "")
 
-    turns = [process(x) for turn in zip(q_hist, a_hist) for x in turn]
+    turns = [process(x) for turn in turns for x in turn]
     target = process(turns.pop(-1))
     dialogue = SEP_TOKEN.join([process(background)] + turns)
     return dialogue, target
@@ -98,7 +94,5 @@ if __name__ == "__main__":
         ) as t:
             for name, g in gs:
                 for k, (x, y) in enumerate(g):
-                    print((x, y))
-                    print()
-                    # s.write(x + "\n")
-                    # t.write(y + "\n")
+                    s.write(x + "\n")
+                    t.write(y + "\n")
