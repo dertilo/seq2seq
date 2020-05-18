@@ -16,7 +16,7 @@ def get_limited_history(history: List, k: int, hist_len: int):
     return history[max(0, k - hist_len) : (k + 1)]
 
 
-def generate_coqa_seq2seq(file_name, hist_len=3):
+def coqa(file_name, hist_len=3):
 
     file = os.environ["HOME"] + "/data/QA/coqa/" + file_name
     data = data_io.read_json(file)["data"]
@@ -36,7 +36,7 @@ def generate_coqa_seq2seq(file_name, hist_len=3):
 SILENCE = "<SILENCE>"
 
 
-def generate_topical_chat_seq2seq(
+def topicalchat(
     file_name="train.json",
     data_path=os.environ["HOME"]
     + "/code/DIALOGUE/alexa-prize-topical-chat-dataset/conversations",
@@ -72,7 +72,7 @@ def generate_topical_chat_seq2seq(
         yield from build_dialogues([Utt()] + utterances)
 
 
-def generate_squad20_seq2seq(file_name):
+def squad20(file_name):
 
     file = os.environ["HOME"] + "/data/QA/SQUAD20/" + file_name
     data = data_io.read_json(file)["data"]
@@ -87,20 +87,28 @@ def generate_squad20_seq2seq(file_name):
                         yield build_input_target(background, turns, SEP)
 
 
-def generate_personachat_seq2seq(data_path=os.environ["HOME"] + "/data/QA"):
+def personachat(data_path=os.environ["HOME"] + "/data/QA", hist_len=3):
     file_name = "personachat_self_original.json"
     file = os.path.join(data_path, file_name)
     data = data_io.read_json(file)["train"]
+
+    def build_dialogues(background, utt):
+        num_utt = len(utt)
+        assert num_utt % 2 == 0
+        turns = [
+            Turn(request=utt[k], response=utt[k + 1])
+            for k in range(0, num_utt, 2)
+        ]
+        some_turns = turns[-hist_len:]
+        yield build_input_target(background, some_turns, SEP)
+
+
     for datum in data:
         background = " ".join(datum["personality"])
         for d in datum["utterances"]:
-            last_candidate_is_the_right_one = d["candidates"][-1]
-            utterances = d["history"] + [last_candidate_is_the_right_one]
-            turns = [
-                Turn(request=utterances[k], response=utterances[k + 1])
-                for k in range(0, len(utterances), 2)
-            ]
-            yield build_input_target(background, turns, SEP)
+            response = d["candidates"][-1]
+            yield from build_dialogues(background, d["history"] + [response])
+            yield from build_dialogues(background, [SILENCE]+d["history"])
 
 
 def build_input_target(background, turns: List[Turn], SEP_TOKEN):
@@ -120,14 +128,14 @@ SEP = tokenizer.special_tokens_map["sep_token"]
 if __name__ == "__main__":
     datagenerators = {
         "train": [
-            ("topicalchat-train", generate_topical_chat_seq2seq()),
-            ("personachat-train", generate_personachat_seq2seq()),
-            ("coqa-train", generate_coqa_seq2seq("coqa-train-v1.0.json")),
-            ("squad20-train", generate_squad20_seq2seq("train-v2.0.json")),
+            ("topicalchat-train", topicalchat(hist_len=3)),
+            ("personachat-train", personachat(hist_len=3)),
+            ("coqa-train", coqa("coqa-train-v1.0.json", hist_len=3)),
+            ("squad20-train", squad20("train-v2.0.json")),
         ],
         "val": [
-            ("coqa-val", generate_coqa_seq2seq("coqa-dev-v1.0.json")),
-            ("squad20-val", generate_squad20_seq2seq("dev-v2.0.json")),
+            ("coqa-val", coqa("coqa-dev-v1.0.json", hist_len=3)),
+            ("squad20-val", squad20("dev-v2.0.json")),
         ],
     }
     data_path = os.environ["HOME"] + "/data/seq2seq_dialogue"
