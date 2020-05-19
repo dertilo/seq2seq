@@ -39,7 +39,7 @@ SILENCE = "<SILENCE>"
 def topicalchat(
     file_name="train.json",
     data_path=os.environ["HOME"]
-    + "/code/DIALOGUE/alexa-prize-topical-chat-dataset/conversations",
+    + "/DIALOGUE/alexa-prize-topical-chat-dataset/conversations",
     hist_len=3,
 ):
 

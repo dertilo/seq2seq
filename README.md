@@ -5,6 +5,7 @@
 ## datasets
 
 * [Natural Questions](https://ai.google.com/research/NaturalQuestions/dataset) on [github](https://github.com/google-research-datasets/natural-questions)
+  + `wget https://storage.googleapis.com/natural_questions/v1.0-simplified/simplified-nq-train.jsonl.gz`
 * [topical-chat](https://github.com/alexa/alexa-prize-topical-chat-dataset)
 * [hotpotqa](https://hotpotqa.github.io/); [hotpot-paper](https://nlp.stanford.edu/pubs/yang2018hotpotqa.pdf)
 * [coqa](https://stanfordnlp.github.io/coqa/)
