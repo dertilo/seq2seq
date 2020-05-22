@@ -24,3 +24,7 @@ squad20-train: 86820
 coqa-val: 7982
 squad20-val: 20301
 ```
+
+### evaluate
+1.`export PYTHONPATH=$HOME/transformers:$HOME/transformers/examples`
+2. `python evaluate.py`
