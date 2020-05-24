@@ -21,6 +21,8 @@ conversation_style = {
 # fmt: off
 app.layout = html.Div([
     html.H3('Testing Bot', style={'text-align': 'center'}),
+    html.Div(id="background",children='Dash: A web application framework for Python.',
+             style={'textAlign': 'right','marginRight':'10%'}),
     html.Div([
         html.Div(id='conversation', style=conversation_style),
         html.Br(),
@@ -38,13 +40,14 @@ app.layout = html.Div([
             style={'width': '325px', 'margin': '0 auto'}),
     ],
         id='screen',
-        style={'width': '400px', 'margin': '0 auto'})
+        style={'width': '400px', 'margin': '0 auto', "float":"bottom"})
 ])
 # fmt: on
 
 
 @app.callback(
-    Output(component_id="conversation", component_property="children"),
+    [Output(component_id="conversation", component_property="children"),
+    Output(component_id="background", component_property="children")],
     [Input(component_id="send_button", component_property="n_clicks")],
     state=[State(component_id="msg_input", component_property="value")],
 )
@@ -68,9 +71,10 @@ def update_conversation(n_clicks, text):
         #         'fontColor': 'white'
         #     }
         # )
-        return conv_hist
+        background="background text"
+        return conv_hist, background
     else:
-        return ""
+        return "",""
 
 
 @app.callback(
