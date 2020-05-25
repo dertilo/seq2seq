@@ -4,3 +4,5 @@ util@git+https://github.com/dertilo/util.git#egg=util
 whoosh
 dash==1.12.0
 torch==1.4.0
+spacy
+# python -m spacy download en_core_web_sm

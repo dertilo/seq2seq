@@ -1,5 +1,6 @@
 import os
 
+import spacy
 import torch
 from summarization.bart.finetune import SummarizationTrainer
 from tqdm import tqdm
@@ -51,6 +52,7 @@ class ChatBot:
         ).model.to(DEFAULT_DEVICE)
         self.tokenizer = BartTokenizer.from_pretrained("bart-large")
         self.SEP = self.tokenizer.special_tokens_map["sep_token"]
+        self.spacy_nlp = spacy.load("en_core_web_sm")
         super().__init__()
 
     def __enter__(self):
@@ -63,25 +65,33 @@ class ChatBot:
         self.searcher.__exit__(exc_type, exc_val, exc_tb)
 
     def respond(self, utt: str):
-        or_searche = " OR ".join(utt.split(" "))
+        background = (
+            "The weather was rainy today, but maybe its going to be sunny tomorrow."
+        )
+        doc = self.spacy_nlp(utt)
+        entities = [s.text for s in doc.ents]
+        if len(entities) > 0:
+            background = self._build_background(background, entities)
+
+        answer = generate_answer(
+            self.SEP,
+            background,
+            self.max_length,
+            self.min_length,
+            self.model,
+            self.tokenizer,
+            utt,
+        )
+
+        return answer, background
+
+    def _build_background(self, former_background, entities):
+        or_searche = " OR ".join(entities)
         q = self.qp.parse(or_searche)
         results = self.searcher.search(q, limit=1)
         if len(results) > 0:
-            background = results[0]["story"]
-            answer = generate_answer(
-                self.SEP,
-                background,
-                self.max_length,
-                self.min_length,
-                self.model,
-                self.tokenizer,
-                utt,
-            )
-        else:
-            answer = "Whaat?"
-            background = ""
-
-        return answer,background
+            former_background = results[0]["story"]
+        return former_background
 
 
 def run_interaction(checkpoint: str):
@@ -92,7 +102,7 @@ def run_interaction(checkpoint: str):
                 print("bye")
                 break
             else:
-                respond,background = chatbot.respond(utt)
+                respond, background = chatbot.respond(utt)
                 print(respond)
 
 
