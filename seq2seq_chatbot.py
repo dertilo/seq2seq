@@ -14,15 +14,13 @@ from build_seq2seq_corpus import build_input_target, Turn
 DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def generate_answer(
-    SEP, background, device, max_length, min_length, model, tokenizer, utt
-):
-    inputt, _ = build_input_target(background, [Turn(utt,"nix")], SEP)
+def generate_answer(SEP, background, max_length, min_length, model, tokenizer, utt):
+    inputt, _ = build_input_target(background, [Turn(utt, "nix")], SEP)
     batch = [" " + inputt]
     dct = tokenizer.batch_encode_plus(batch, max_length=1024, return_tensors="pt")
     encoded = model.generate(
-        input_ids=dct["input_ids"].to(device),
-        attention_mask=dct["attention_mask"].to(device),
+        input_ids=dct["input_ids"].to(DEFAULT_DEVICE),
+        attention_mask=dct["attention_mask"].to(DEFAULT_DEVICE),
         num_beams=4,
         length_penalty=2.0,
         max_length=max_length + 2,
@@ -38,42 +36,61 @@ def generate_answer(
     return answer
 
 
-def run_interaction(model_name: str, device: str = DEFAULT_DEVICE):
+from whoosh.qparser import QueryParser
 
-    assert model_name.endswith(".ckpt")
-    model = SummarizationTrainer.load_from_checkpoint(model_name).model.to(device)
-    tokenizer = BartTokenizer.from_pretrained("bart-large")
-    SEP = tokenizer.special_tokens_map["sep_token"]
+
+class ChatBot:
 
     max_length = 140
     min_length = 10
 
-    from whoosh.qparser import QueryParser
+    def __init__(self, checkpoint_file) -> None:
+        assert checkpoint_file.endswith(".ckpt")
+        self.model = SummarizationTrainer.load_from_checkpoint(
+            checkpoint_file
+        ).model.to(DEFAULT_DEVICE)
+        self.tokenizer = BartTokenizer.from_pretrained("bart-large")
+        self.SEP = self.tokenizer.special_tokens_map["sep_token"]
+        super().__init__()
 
-    ix = index.open_dir(INDEX_DIR)
-    qp = QueryParser("story", schema=ix.schema)
+    def __enter__(self):
+        ix = index.open_dir(INDEX_DIR)
+        self.searcher = ix.searcher()
+        self.qp = QueryParser("story", schema=ix.schema)
+        return self
 
-    with ix.searcher() as s:
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.searcher.__exit__(exc_type, exc_val, exc_tb)
+
+    def respond(self, utt: str):
+        or_searche = " OR ".join(utt.split(" "))
+        q = self.qp.parse(or_searche)
+        results = self.searcher.search(q, limit=1)
+        if len(results) > 0:
+            background = results[0]["story"]
+            answer = generate_answer(
+                self.SEP,
+                background,
+                self.max_length,
+                self.min_length,
+                self.model,
+                self.tokenizer,
+                utt,
+            )
+        else:
+            answer = "Whaat?"
+        return answer
+
+
+def run_interaction(checkpoint: str):
+    with ChatBot(checkpoint) as chatbot:
         while True:
             utt = input(": ")
-            or_searche = " OR ".join(utt.split(" "))
-            q = qp.parse(or_searche)
-            results = s.search(q, limit=1)
-            if len(results) > 0:
-                background = results[0]["story"]
-                answer = generate_answer(
-                    SEP,
-                    background,
-                    device,
-                    max_length,
-                    min_length,
-                    model,
-                    tokenizer,
-                    utt,
-                )
+            if utt == "bye":
+                print("bye")
+                break
             else:
-                answer = "Whaat?"
-            print(answer)
+                print(chatbot.respond(utt))
 
 
 def build_index(data, schema, index_dir="indexdir"):
@@ -110,5 +127,6 @@ if not os.path.isdir(INDEX_DIR):
 
 
 if __name__ == "__main__":
-    model_file = os.environ["HOME"] + "/data/bart_seq2seq_dialogue/checkpointepoch=0.ckpt"
+    file = "checkpointepoch=2.ckpt"
+    model_file = os.environ["HOME"] + "/data/bart_coqa_seq2seq/" + file
     run_interaction(model_file)

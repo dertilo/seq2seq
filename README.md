@@ -23,8 +23,8 @@ squad20-val: 20301
 ```
 0. build corpus: `python build_seq2seq_corpus.py`
 0. train: `bash run_train.sh 1 2`
-1. evaluate: `export PYTHONPATH=$HOME/transformers:$HOME/transformers/examples` and `python evaluate.py`
-
+1. evaluate: `source activate huggingface && export PYTHONPATH=$HOME/transformers/examples` and `python evaluate.py`
+2. on gunther, get model from hpc: `rsync -avz -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" --exclude=.git tilo-himmelsbach@gateway.hpc.tu-berlin.de:/home/users/t/tilo-himmelsbach/data/bart_seq2seq_dialogue_continued/checkpointepoch=2.ckpt ~/data/bart_coqa_seq2seq/`
 * scores look like total shit
     ```python
     ### ckpt 0 
