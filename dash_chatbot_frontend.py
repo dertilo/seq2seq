@@ -24,27 +24,28 @@ conversation_style = {
 }
 # fmt: off
 app.layout = html.Div([
-    html.H3('Testing Bot', style={'text-align': 'center'}),
-    html.Div(id="background",children='Dash: A web application framework for Python.',
-             style={'textAlign': 'right','marginRight':'10%'}),
+    html.H3('CoqaBot', style={'marginLeft':'10%'}),
+    html.Div([html.H5('Background'),
+              html.Div(id="background")],
+             style={'marginLeft':'40%','marginRight':'10%'}),
     html.Div([
-        html.Div(id='conversation', style=conversation_style),
-        html.Br(),
         html.Div([
+            html.Div(id='conversation', style=conversation_style),
+            html.Br(),
             html.Table([
                 html.Tr([
                     # text input for user message
-                    html.Td([dcc.Input(id='msg_input', value='hello', type='text')],
-                            style={'valign': 'middle'}),
+                    html.Td([dcc.Input(id='msg_input', value='', type='text')],
+                            ),
                     # message to send user message to bot backend
                     html.Td([html.Button('Send', id='send_button', type='submit')],
-                            style={'valign': 'middle'})
+                            )
                 ])
             ])],
-            style={'width': '325px', 'margin': '0 auto'}),
+            style={'width': '325px'}),
     ],
         id='screen',
-        style={'width': '400px', 'margin': '0 auto', "float":"bottom"})
+        style={'width': '400px', 'valign': 'left'})
 ])
 # fmt: on
 
@@ -87,7 +88,9 @@ def update_conversation(n_clicks, text):
 def clear_input(_):
     return ""
 
-
+class DummyChatBot:
+    def respond(self,utt):
+        return "bla", "nothing"
 # run app
 if __name__ == "__main__":
     file = "checkpointepoch=2.ckpt"
@@ -95,3 +98,5 @@ if __name__ == "__main__":
 
     with ChatBot(model_file) as chatbot:
         app.run_server(debug=True,host="0.0.0.0")
+    # chatbot = DummyChatBot()
+    # app.run_server(debug=True,host="0.0.0.0")
