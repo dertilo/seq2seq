@@ -79,7 +79,9 @@ class ChatBot:
             )
         else:
             answer = "Whaat?"
-        return answer
+            background = ""
+
+        return answer,background
 
 
 def run_interaction(checkpoint: str):
@@ -90,7 +92,8 @@ def run_interaction(checkpoint: str):
                 print("bye")
                 break
             else:
-                print(chatbot.respond(utt))
+                respond,background = chatbot.respond(utt)
+                print(respond)
 
 
 def build_index(data, schema, index_dir="indexdir"):

@@ -3,3 +3,4 @@ util@git+https://github.com/dertilo/util.git#egg=util
 # https://github.com/dertilo/transformers/tree/bart
 whoosh
 dash==1.12.0
+torch==1.4.0

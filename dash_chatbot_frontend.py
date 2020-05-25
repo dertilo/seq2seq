@@ -1,8 +1,12 @@
+import os
+
 import dash
 import dash_table
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
+
+from seq2seq_chatbot import ChatBot
 
 """
 based on: https://github.com/stephch/rasa_start/blob/master/dash_demo_app.py
@@ -55,7 +59,7 @@ def update_conversation(n_clicks, text):
     global conv_hist
 
     if n_clicks is not None and n_clicks > 0:
-        response = "whaat?"  # agent.handle_message(text)
+        response,background = chatbot.respond(text)  # agent.handle_message(text)
         user_utt = [html.H5(text, style={"text-align": "right"})]
         bot_utt = [html.H5(html.I(response), style={"text-align": "left"})]
         conv_hist = bot_utt + user_utt + [html.Hr()] + conv_hist
@@ -71,7 +75,6 @@ def update_conversation(n_clicks, text):
         #         'fontColor': 'white'
         #     }
         # )
-        background="background text"
         return conv_hist, background
     else:
         return "",""
@@ -87,4 +90,8 @@ def clear_input(_):
 
 # run app
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    file = "checkpointepoch=2.ckpt"
+    model_file = os.environ["HOME"] + "/data/bart_coqa_seq2seq/" + file
+
+    with ChatBot(model_file) as chatbot:
+        app.run_server(debug=True,host="0.0.0.0")
