@@ -4,47 +4,22 @@
 
 import argparse
 import json
+import os
+import re
 import time
-from pycorenlp import StanfordCoreNLP
-nlp = StanfordCoreNLP('http://corenlp:9000')
 
 
-def _str(s):
-    """ Convert PTB tokens to normal tokens """
-    if (s.lower() == '-lrb-'):
-        s = '('
-    elif (s.lower() == '-rrb-'):
-        s = ')'
-    elif (s.lower() == '-lsb-'):
-        s = '['
-    elif (s.lower() == '-rsb-'):
-        s = ']'
-    elif (s.lower() == '-lcb-'):
-        s = '{'
-    elif (s.lower() == '-rcb-'):
-        s = '}'
-    return s
-
-
-def tokenize_text(text):
-    paragraph = nlp.annotate(text, properties={
-                             'annotators': 'tokenize, ssplit',
-                             'outputFormat': 'json'})
-    tokens = []
-    for sent in paragraph['sentences']:
-        for token in sent['tokens']:
-            tokens.append(_str(token['word']))
-    return ' '.join(tokens)
-
+def convert_PTB_tokens_to_normal_ones(s:str):
+    return s.replace("-lrb-","(").replace("-rrb-",")").replace("-lsb-","[").replace("-rsb-","]").replace("-lcb-","{").replace("-rcb-","}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_file', '-d', type=str, required=True)
-    parser.add_argument('--n_history', type=int, default=0,
+    parser.add_argument('--data_file', '-d', type=str, default=os.environ["HOME"]+"/data/QA/coqa/coqa-train-v1.0.json")
+    parser.add_argument('--n_history', type=int, default=3,
                         help='leverage the previous n_history rounds of Q/A pairs'
                              'if n_history == -1, use all history')
     parser.add_argument('--lower', action='store_true')
-    parser.add_argument('--output_file', '-o', type=str, required=True)
+    parser.add_argument('--output_file', '-o', type=str, default="coqa-danqi")
     args = parser.parse_args()
 
     f_src = open('{}-src.txt'.format(args.output_file), 'w')
@@ -59,15 +34,15 @@ if __name__ == '__main__':
         if i % 10 == 0:
             print('processing %d / %d (used_time = %.2fs)...' %
                   (i, len(dataset['data']), time.time() - start_time))
-        context_str = tokenize_text(datum['story'])
+        context_str = convert_PTB_tokens_to_normal_ones(datum['story'])
         assert len(datum['questions']) == len(datum['answers'])
 
         history = []
         for question, answer in zip(datum['questions'], datum['answers']):
             assert question['turn_id'] == answer['turn_id']
             idx = question['turn_id']
-            question_str = tokenize_text(question['input_text'])
-            answer_str = tokenize_text(answer['input_text'])
+            question_str = convert_PTB_tokens_to_normal_ones(question['input_text'])
+            answer_str = convert_PTB_tokens_to_normal_ones(answer['input_text'])
 
             full_str = context_str + ' ||'
             if args.n_history < 0:
