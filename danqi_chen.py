@@ -9,7 +9,7 @@ import os
 import time
 
 
-def convert_PTB_tokens_to_normal_ones(s: str):
+def fix_brackets(s: str):
     return (
         s.replace("-lrb-", "(")
         .replace("-rrb-", ")")
@@ -20,11 +20,7 @@ def convert_PTB_tokens_to_normal_ones(s: str):
     )
 
 
-def danqi_concatenation(
-    context: str, turns: List[Tuple[str, str]], question: str, num_history: int
-):
-    if num_history > 0:
-        turns = turns[-num_history:]
+def danqi_concatenation(context: str, turns: List[Tuple[str, str]], question: str):
     return context + " ||" + danqi_qa_concat(turns) + " <Q> " + question
 
 
@@ -69,19 +65,20 @@ if __name__ == "__main__":
                 "processing %d / %d (used_time = %.2fs)..."
                 % (idx, len(dataset["data"]), time.time() - start_time)
             )
-        context_str = convert_PTB_tokens_to_normal_ones(datum["story"])
+        context_str = fix_brackets(datum["story"])
         assert len(datum["questions"]) == len(datum["answers"])
 
         history = []
         for question, answer in zip(datum["questions"], datum["answers"]):
             assert question["turn_id"] == answer["turn_id"]
             idx = question["turn_id"]
-            question_str = convert_PTB_tokens_to_normal_ones(question["input_text"])
-            answer_str = convert_PTB_tokens_to_normal_ones(answer["input_text"])
+            question_str = fix_brackets(question["input_text"])
+            answer_str = fix_brackets(answer["input_text"])
 
-            full_str = danqi_concatenation(
-                context_str, history, question_str, args.n_history
-            )
+            if args.n_history > 0:
+                turns = history[-args.n_history :]
+
+            full_str = danqi_concatenation(context_str, turns, question_str)
             if args.lower:
                 full_str = full_str.lower()
                 answer_str = answer_str.lower()

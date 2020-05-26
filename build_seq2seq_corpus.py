@@ -6,6 +6,8 @@ from transformers import BartTokenizer
 from typing import List, NamedTuple
 from util import data_io
 
+from danqi_chen import danqi_concatenation, fix_brackets
+
 
 class Turn(NamedTuple):
     request: str
@@ -22,7 +24,9 @@ def coqa(file_name, hist_len=3):
     data = data_io.read_json(file)["data"]
 
     def get_history(l: List, k):
-        return [d["input_text"] for d in get_limited_history(l, k, hist_len)]
+        return [
+            fix_brackets(d["input_text"]) for d in get_limited_history(l, k, hist_len)
+        ]
 
     for datum in data:
         dialogue_len = len(datum["questions"])
@@ -30,7 +34,9 @@ def coqa(file_name, hist_len=3):
             q_hist = get_history(datum["questions"], k)
             a_hist = get_history(datum["answers"], k)
             turns = [Turn(req, res) for req, res in zip(q_hist, a_hist)]
-            yield build_input_target(datum["story"], turns, SEP)
+            yield build_input_target(
+                fix_brackets(datum["story"]), turns, SEP, use_danqi=True
+            )
 
 
 SILENCE = "<SILENCE>"
@@ -96,28 +102,31 @@ def personachat(data_path=os.environ["HOME"] + "/data/QA", hist_len=3):
         num_utt = len(utt)
         assert num_utt % 2 == 0
         turns = [
-            Turn(request=utt[k], response=utt[k + 1])
-            for k in range(0, num_utt, 2)
+            Turn(request=utt[k], response=utt[k + 1]) for k in range(0, num_utt, 2)
         ]
         some_turns = turns[-hist_len:]
         yield build_input_target(background, some_turns, SEP)
-
 
     for datum in data:
         background = " ".join(datum["personality"])
         for d in datum["utterances"]:
             response = d["candidates"][-1]
             yield from build_dialogues(background, d["history"] + [response])
-            yield from build_dialogues(background, [SILENCE]+d["history"])
+            yield from build_dialogues(background, [SILENCE] + d["history"])
 
 
-def build_input_target(background, turns: List[Turn], SEP_TOKEN):
+def build_input_target(background, turns: List[Turn], SEP_TOKEN, use_danqi=False):
     def process(s):
         return s.replace("\n", "")
 
-    turns = [process(x) for turn in turns for x in turn if x != SILENCE]
-    target = process(turns.pop(-1))
-    dialogue = SEP_TOKEN.join([process(background)] + turns)
+    if use_danqi:
+        question, answer = turns.pop(-1)
+        dialogue = danqi_concatenation(background, turns, question)
+        target = answer
+    else:
+        utterances = [process(x) for turn in turns for x in turn if x != SILENCE]
+        target = process(utterances.pop(-1))
+        dialogue = SEP_TOKEN.join([process(background)] + utterances)
     return dialogue, target
 
 
@@ -128,14 +137,14 @@ SEP = tokenizer.special_tokens_map["sep_token"]
 if __name__ == "__main__":
     datagenerators = {
         "train": [
-            ("topicalchat-train", topicalchat(hist_len=3)),
-            ("personachat-train", personachat(hist_len=3)),
+            # ("topicalchat-train", topicalchat(hist_len=3)),
+            # ("personachat-train", personachat(hist_len=3)),
             ("coqa-train", coqa("coqa-train-v1.0.json", hist_len=3)),
-            ("squad20-train", squad20("train-v2.0.json")),
+            # ("squad20-train", squad20("train-v2.0.json")),
         ],
         "val": [
             ("coqa-val", coqa("coqa-dev-v1.0.json", hist_len=3)),
-            ("squad20-val", squad20("dev-v2.0.json")),
+            # ("squad20-val", squad20("dev-v2.0.json")),
         ],
     }
     data_path = os.environ["HOME"] + "/data/seq2seq_dialogue"
@@ -151,7 +160,7 @@ if __name__ == "__main__":
                     t.write(y + "\n")
                 num_samples = k
                 print("%s: %d" % (name, num_samples))
-'''
+"""
 corpora-sizes
 
 topicalchat-train: 182347
@@ -160,4 +169,4 @@ coqa-train: 108646
 squad20-train: 86820
 coqa-val: 7982
 squad20-val: 20301
-'''
+"""
