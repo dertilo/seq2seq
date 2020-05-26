@@ -114,19 +114,19 @@ def personachat(data_path=os.environ["HOME"] + "/data/QA", hist_len=3):
             yield from build_dialogues(background, d["history"] + [response])
             yield from build_dialogues(background, [SILENCE] + d["history"])
 
+def process_text(s):
+    return fix_brackets(s.replace("\n", ""))
 
 def build_input_target(background, turns: List[Turn], SEP_TOKEN, use_danqi=False):
-    def process(s):
-        return s.replace("\n", "")
 
     if use_danqi:
         question, answer = turns.pop(-1)
         dialogue = danqi_concatenation(background, turns, question)
         target = answer
     else:
-        utterances = [process(x) for turn in turns for x in turn if x != SILENCE]
-        target = process(utterances.pop(-1))
-        dialogue = SEP_TOKEN.join([process(background)] + utterances)
+        utterances = [process_text(x) for turn in turns for x in turn if x != SILENCE]
+        target = process_text(utterances.pop(-1))
+        dialogue = SEP_TOKEN.join([process_text(background)] + utterances)
     return dialogue, target
 
 
