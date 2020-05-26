@@ -25,9 +25,6 @@ conversation_style = {
 # fmt: off
 app.layout = html.Div([
     html.H3('CoqaBot', style={'marginLeft':'10%'}),
-    html.Div([html.H5('Background'),
-              html.Div(id="background")],
-             style={'marginLeft':'40%','marginRight':'10%'}),
     html.Div([
         html.Div([
             html.Div(id='conversation', style=conversation_style),
@@ -45,8 +42,15 @@ app.layout = html.Div([
             style={'width': '325px'}),
     ],
         id='screen',
-        style={'width': '400px','height': '800px', 'valign': 'left'})
-])
+        className="two columns",
+        style={'width': '400px','height': '800px','valign': 'left'}),
+
+    html.Div([html.H5('Background'),
+              html.Div(id="background")],
+             className="two columns",
+             style={'width': '600px'}
+             )
+],className="row")
 # fmt: on
 
 
@@ -88,9 +92,10 @@ def update_conversation(n_clicks, text):
 def clear_input(_):
     return ""
 
+dummy_background="""In the office of the German Chancellor Angela Merkel, there is a picture of Catherine the Great, the legendary Russian Empress. When asked why she has the picture, Merkel says, "She was a strong woman". Many say the same of Merkel. The most powerful woman in the world, according to US Forbes magazine, was in China last week. She came to discuss trade and environmental issues with China's top leaders. Germany's first woman leader is known as a brave and practical statesman . Even since her time at school, she had the habit of getting everything in order. Every day before doing her homework she would clean the desk and think about what to do next. "I prefer a long time for full preparations to make my decision. But once I decide, I will stand up for what I believe," Merkel said. Perhaps it was good habits that helped her do well in her studies. At 32, she got a doctorate in physics and then she worked as a researcher. However, the life of a scholar couldn't put off her love of politics. While working in labs, Merkel took time off to read political books and at last joined a political party. "Her calmness helped her stand out in the party. She could always find a way out while others felt hopeless," said one of her old friends. In her first big political job as Minister for the Environment in 1994, her scientific background proved very useful. In 2005 she became Germany's youngest chancellor since the second World War. Now half way through her four-year term, the 53-year-old woman has made a name for herself both in Germany and abroad. At the EU summit in 2005 when France quarreled with Britain over the EU budget , some people believed the EU was close to breaking down. But Merkel didn't give up. She shuttled between the heads of the two powers and had them reached an agreement. "Strength comes from composure and courage. Many people say I am a strong woman. But I would rather say I have perseverance," said Merkel."""
 class DummyChatBot:
     def respond(self,utt):
-        return "bla", "nothing"
+        return "bla", dummy_background
 # run app
 if __name__ == "__main__":
     file = "checkpointepoch=2.ckpt"
