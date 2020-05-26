@@ -77,6 +77,8 @@ if __name__ == "__main__":
 
             if args.n_history > 0:
                 turns = history[-args.n_history :]
+            else:
+                turns = history
 
             full_str = danqi_concatenation(context_str, turns, question_str)
             if args.lower:
