@@ -43,19 +43,16 @@ if __name__ == "__main__":
     file = "checkpointepoch=2.ckpt"
     checkpoint = os.environ["HOME"] + "/data/bart_coqa_seq2seq/" + file
 
-    with ChatBot(checkpoint) as chatbot:
+    with ChatBot(checkpoint, find_background=False) as chatbot:
 
         def one_dialogue(datum):
             chatbot.reset()
-            pred_data = {
-                (datum["id"], q["turn_id"]): chatbot.do_answer(
-                    q["input_text"], datum["story"]
-                )
-                for q, a in zip(datum["questions"], datum["answers"])
-            }
-            return pred_data
+            for q, a in zip(datum["questions"], datum["answers"]):
+                answer = chatbot.do_answer(q["input_text"], datum["story"])
+                yield (datum["id"], q["turn_id"]), answer
 
-        pred_data = {k: a for datum in tqdm(data) for k, a in one_dialogue(datum)}
+        g = ((k, a) for datum in data for k, a in one_dialogue(datum))
+        pred_data = {k: a for k, a in tqdm(g)}
     performance = evaluator.model_performance(pred_data)
     pprint(performance)
 
