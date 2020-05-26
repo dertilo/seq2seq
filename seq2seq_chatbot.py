@@ -53,6 +53,7 @@ class ChatBot:
 
     max_length = 140
     min_length = 10
+    num_historic_turns = 2
 
     def __init__(self, checkpoint_file) -> None:
         assert checkpoint_file.endswith(".ckpt")
@@ -78,23 +79,30 @@ class ChatBot:
         self.searcher.__exit__(exc_type, exc_val, exc_tb)
 
     def respond(self, utt: str):
-        self.dialogue_history.append(Turn(utt, "nix"))
         doc = self.spacy_nlp(utt)
         entities = [s.text for s in doc.ents]
         if len(entities) > 0:
             self._update_background(entities)
 
+        answer = self.do_answer(utt, self.background)
+        self.dialogue_history[-1] = Turn(utt, answer)
+        return answer, self.background
+
+    def do_answer(self, utt, background):
+        self.dialogue_history.append(Turn(utt, "nix"))
         answer = generate_answer(
             self.SEP,
-            self.background,
+            background,
             self.max_length,
             self.min_length,
             self.model,
             self.tokenizer,
-            self.dialogue_history[-2:],
+            self.dialogue_history[-self.num_historic_turns :],
         )
-        self.dialogue_history[-1] = Turn(utt, answer)
-        return answer, self.background
+        return answer
+
+    def reset(self):
+        self.dialogue_history = []
 
     def _update_background(self, entities):
         or_searche = " OR ".join(entities)
