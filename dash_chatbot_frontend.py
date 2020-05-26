@@ -45,7 +45,7 @@ app.layout = html.Div([
             style={'width': '325px'}),
     ],
         id='screen',
-        style={'width': '400px', 'valign': 'left'})
+        style={'width': '400px','height': '800px', 'valign': 'left'})
 ])
 # fmt: on
 
