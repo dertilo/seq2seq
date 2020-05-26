@@ -21,20 +21,19 @@ def convert_PTB_tokens_to_normal_ones(s: str):
 
 
 def danqi_concatenation(
-    context: str, history: List[Tuple[str, str]], question: str, num_history: int
+    context: str, turns: List[Tuple[str, str]], question: str, num_history: int
 ):
-    full_str = context + " ||"
-    if num_history < 0:
-        for i, (q, a) in enumerate(history):
-            d = len(history) - i
-            full_str += " <Q{}> ".format(d) + q + " <A{}> ".format(d) + a
-    elif num_history > 0:
-        context_len = min(num_history, len(history))
-        for i, (q, a) in enumerate(history[-context_len:]):
-            d = context_len - i
-            full_str += " <Q{}> ".format(d) + q + " <A{}> ".format(d) + a
-    full_str += " <Q> " + question
-    return full_str
+    if num_history > 0:
+        turns = turns[-num_history:]
+    return context + " ||" + danqi_qa_concat(turns) + " <Q> " + question
+
+
+def danqi_qa_concat(turns: List[Tuple[str, str]]):
+    qas = ""
+    for i, (q, a) in enumerate(turns):
+        d = len(turns) - i
+        qas += " <Q{}> ".format(d) + q + " <A{}> ".format(d) + a
+    return qas
 
 
 if __name__ == "__main__":
