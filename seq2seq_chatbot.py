@@ -15,7 +15,9 @@ DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 def generate_answer(
     batch: List[str], max_length, min_length, model, tokenizer,
 ):
-    dct = tokenizer.batch_encode_plus(batch, max_length=1024, return_tensors="pt")
+    dct = tokenizer.batch_encode_plus(
+        batch, max_length=1024, return_tensors="pt", pad_to_max_length=True
+    )
     encoded_batch = model.generate(
         input_ids=dct["input_ids"].to(DEFAULT_DEVICE),
         attention_mask=dct["attention_mask"].to(DEFAULT_DEVICE),
