@@ -1,6 +1,7 @@
 """
     based on https://github.com/stanfordnlp/coqa-baselines/blob/master/scripts/gen_seq2seq_data.py
 """
+from typing import Tuple, List
 
 import argparse
 import json
@@ -17,6 +18,23 @@ def convert_PTB_tokens_to_normal_ones(s: str):
         .replace("-lcb-", "{")
         .replace("-rcb-", "}")
     )
+
+
+def danqi_concatenation(
+    context: str, history: List[Tuple[str, str]], question: str, num_history: int
+):
+    full_str = context + " ||"
+    if num_history < 0:
+        for i, (q, a) in enumerate(history):
+            d = len(history) - i
+            full_str += " <Q{}> ".format(d) + q + " <A{}> ".format(d) + a
+    elif num_history > 0:
+        context_len = min(num_history, len(history))
+        for i, (q, a) in enumerate(history[-context_len:]):
+            d = context_len - i
+            full_str += " <Q{}> ".format(d) + q + " <A{}> ".format(d) + a
+    full_str += " <Q> " + question
+    return full_str
 
 
 if __name__ == "__main__":
@@ -46,11 +64,11 @@ if __name__ == "__main__":
 
     start_time = time.time()
     data = []
-    for i, datum in enumerate(dataset["data"]):
-        if i % 10 == 0:
+    for idx, datum in enumerate(dataset["data"]):
+        if idx % 10 == 0:
             print(
                 "processing %d / %d (used_time = %.2fs)..."
-                % (i, len(dataset["data"]), time.time() - start_time)
+                % (idx, len(dataset["data"]), time.time() - start_time)
             )
         context_str = convert_PTB_tokens_to_normal_ones(datum["story"])
         assert len(datum["questions"]) == len(datum["answers"])
@@ -62,17 +80,9 @@ if __name__ == "__main__":
             question_str = convert_PTB_tokens_to_normal_ones(question["input_text"])
             answer_str = convert_PTB_tokens_to_normal_ones(answer["input_text"])
 
-            full_str = context_str + " ||"
-            if args.n_history < 0:
-                for i, (q, a) in enumerate(history):
-                    d = len(history) - i
-                    full_str += " <Q{}> ".format(d) + q + " <A{}> ".format(d) + a
-            elif args.n_history > 0:
-                context_len = min(args.n_history, len(history))
-                for i, (q, a) in enumerate(history[-context_len:]):
-                    d = context_len - i
-                    full_str += " <Q{}> ".format(d) + q + " <A{}> ".format(d) + a
-            full_str += " <Q> " + question_str
+            full_str = danqi_concatenation(
+                context_str, history, question_str, args.n_history
+            )
             if args.lower:
                 full_str = full_str.lower()
                 answer_str = answer_str.lower()
