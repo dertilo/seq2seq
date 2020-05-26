@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 import spacy
 import torch
@@ -15,8 +16,16 @@ from build_seq2seq_corpus import build_input_target, Turn
 DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def generate_answer(SEP, background, max_length, min_length, model, tokenizer, utt):
-    inputt, _ = build_input_target(background, [Turn(utt, "nix")], SEP)
+def generate_answer(
+    SEP,
+    background,
+    max_length,
+    min_length,
+    model,
+    tokenizer,
+    dialog_history: List[Turn],
+):
+    inputt, _ = build_input_target(background, dialog_history, SEP)
     batch = [" " + inputt]
     dct = tokenizer.batch_encode_plus(batch, max_length=1024, return_tensors="pt")
     encoded = model.generate(
@@ -62,12 +71,14 @@ class ChatBot:
         self.background = (
             "The weather was rainy today, but maybe its going to be sunny tomorrow."
         )
+        self.dialogue_history: List[Turn] = []
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.searcher.__exit__(exc_type, exc_val, exc_tb)
 
     def respond(self, utt: str):
+        self.dialogue_history.append(Turn(utt, "nix"))
         doc = self.spacy_nlp(utt)
         entities = [s.text for s in doc.ents]
         if len(entities) > 0:
@@ -80,9 +91,9 @@ class ChatBot:
             self.min_length,
             self.model,
             self.tokenizer,
-            utt,
+            self.dialogue_history[-2:],
         )
-
+        self.dialogue_history[-1] = Turn(utt, answer)
         return answer, self.background
 
     def _update_background(self, entities):
