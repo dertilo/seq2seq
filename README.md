@@ -25,29 +25,6 @@ squad20-val: 20301
 0. train: `bash run_train.sh 1 2`
 1. evaluate: `source activate huggingface && export PYTHONPATH=$HOME/transformers/examples` and `python evaluate.py`
 2. on gunther, get model from hpc: `rsync -avz -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" --exclude=.git tilo-himmelsbach@gateway.hpc.tu-berlin.de:/home/users/t/tilo-himmelsbach/data/bart_seq2seq_dialogue_continued/checkpointepoch=2.ckpt ~/data/bart_coqa_seq2seq/`
-* scores look like total shit
-    ```python
-    ### ckpt 0 
-    {'rouge-1': {'f': 0.07989701977251337,
-                 'p': 0.04469210491383478,
-                 'r': 0.5758200577200578},
-     'rouge-2': {'f': 0.04629125690555241,
-                 'p': 0.02595835462144872,
-                 'r': 0.33491416857995804},
-     'rouge-l': {'f': 0.10483736259282633,
-                 'p': 0.0606928395429648,
-                 'r': 0.5718876995553469}}
-    
-    ### ckpt 1 
-    {'rouge-1': {'f': 0.08243292827413572,
-                 'p': 0.046208073848713546,
-                 'r': 0.5752917388167387},
-     'rouge-2': {'f': 0.04764197955935347,
-                 'p': 0.02675712171558292,
-                 'r': 0.334973912344965},
-     'rouge-l': {'f': 0.10797371954306047,
-                 'p': 0.06287075612168479,
-                 'r': 0.5711747078085313}}
-    
-    ```
--> maybe scaling down, this time training on coqa only
+
+# dash-frontend
+![dash-frontend](images/dash_frontend.jpeg)
