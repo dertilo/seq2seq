@@ -8,30 +8,48 @@ from coqa_evaluation import CoQAEvaluator
 from seq2seq_chatbot import ChatBot
 
 
-def test_evaluation(evaluator, data):
-    scores = {}
-    # gold answers
-    pred_data = {
-        (datum["id"], q["turn_id"]): a["input_text"]
-        for datum in data
-        for q, a in zip(datum["questions"], datum["answers"])
-    }
+class CheatBot:
+    def __init__(self, data, do_echo=False) -> None:
+        def answer_fun(q, a):
+            if do_echo:
+                return q["input_text"]
+            else:
+                return a["input_text"]
+
+        self.gold_preds = {
+            (datum["id"], q["turn_id"]): answer_fun(q, a)
+            for datum in data
+            for q, a in zip(datum["questions"], datum["answers"])
+        }
+        super().__init__()
+
+    def do_answer(self, story_id, turn_id):
+        return self.gold_preds[(story_id, turn_id)]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+    def reset(self):
+        pass
+
+
+def evaluate_chatbot(chatbot):
+    def one_dialogue(datum):
+        chatbot.reset()
+        for q, a in zip(datum["questions"], datum["answers"]):
+            if isinstance(chatbot, CheatBot):
+                answer = chatbot.do_answer(datum["id"], q["turn_id"])
+            else:
+                answer = chatbot.do_answer(q["input_text"], datum["story"])
+            yield (datum["id"], q["turn_id"]), answer
+
+    g = ((k, a) for datum in data for k, a in one_dialogue(datum))
+    pred_data = {k: a for k, a in tqdm(g)}
     performance = evaluator.model_performance(pred_data)
-    scores["gold-answers"] = performance["overall"]
-    # questions as answers
-    pred_data = {
-        (datum["id"], q["turn_id"]): q["input_text"]
-        for datum in data
-        for q, a in zip(datum["questions"], datum["answers"])
-    }
-    performance = evaluator.model_performance(pred_data)
-    scores["question-answers"] = performance["overall"]
-    pprint(scores)
-    """
-    # TODO(tilo): why are gold-answers not reaching 100% ??
-    {'gold-answers': {'em': 94.7, 'f1': 97.3, 'turns': 7983},
-     'question-answers': {'em': 0.0, 'f1': 3.5, 'turns': 7983}}
-    """
+    return performance
 
 
 if __name__ == "__main__":
@@ -43,17 +61,15 @@ if __name__ == "__main__":
     file = "checkpointepoch=2.ckpt"
     checkpoint = os.environ["HOME"] + "/data/bart_coqa_seq2seq/" + file
 
+    scores = {}
+    scores["cheatbot"] = evaluate_chatbot(CheatBot(data))
+    scores["echobot"] = evaluate_chatbot(CheatBot(data, do_echo=True))
     with ChatBot(checkpoint, find_background=False) as chatbot:
+        scores["bart"] = evaluate_chatbot(chatbot)
+    pprint({n: s["overall"] for n, s in scores.items()})
 
-        def one_dialogue(datum):
-            chatbot.reset()
-            for q, a in zip(datum["questions"], datum["answers"]):
-                answer = chatbot.do_answer(q["input_text"], datum["story"])
-                yield (datum["id"], q["turn_id"]), answer
-
-        g = ((k, a) for datum in data for k, a in one_dialogue(datum))
-        pred_data = {k: a for k, a in tqdm(g)}
-    performance = evaluator.model_performance(pred_data)
-    pprint(performance)
-
-    # test_evaluation(evaluator, data)
+    """
+    # TODO(tilo): why are gold-answers not reaching 100% ??
+    {'cheatbot': {'em': 94.7, 'f1': 97.3, 'turns': 7983},
+     'echobot': {'em': 0.0, 'f1': 3.5, 'turns': 7983}}
+    """
