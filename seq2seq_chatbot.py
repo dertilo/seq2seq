@@ -13,21 +13,10 @@ DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def generate_answer(
-    SEP,
-    background,
-    max_length,
-    min_length,
-    model,
-    tokenizer,
-    dialog_history: List[Turn],
+    batch: List[str], max_length, min_length, model, tokenizer,
 ):
-    inputt, _ = build_input_target(background, dialog_history, SEP)
-    batch = [
-        " "  # see: https://github.com/huggingface/transformers/blob/5ddd8d6531c8c49fdd281b55b93f6c81c9826f4b/examples/summarization/bart/evaluate_cnn.py#L66
-        + inputt
-    ]
     dct = tokenizer.batch_encode_plus(batch, max_length=1024, return_tensors="pt")
-    encoded = model.generate(
+    encoded_batch = model.generate(
         input_ids=dct["input_ids"].to(DEFAULT_DEVICE),
         attention_mask=dct["attention_mask"].to(DEFAULT_DEVICE),
         num_beams=4,
@@ -38,11 +27,14 @@ def generate_answer(
         no_repeat_ngram_size=3,
         early_stopping=True,
         decoder_start_token_id=model.config.eos_token_id,
-    )[0]
-    answer = tokenizer.decode(
-        encoded, skip_special_tokens=True, clean_up_tokenization_spaces=False
     )
-    return answer
+    answers = [
+        tokenizer.decode(
+            encoded, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )
+        for encoded in encoded_batch
+    ]
+    return answers
 
 
 from whoosh.qparser import QueryParser
@@ -54,7 +46,7 @@ class ChatBot:
     min_length = 3
     num_historic_turns = 2
 
-    def __init__(self, checkpoint_file, find_background:bool=True) -> None:
+    def __init__(self, checkpoint_file, find_background: bool = True) -> None:
         assert checkpoint_file.endswith(".ckpt")
         self.model = SummarizationTrainer.load_from_checkpoint(
             checkpoint_file
@@ -89,7 +81,8 @@ class ChatBot:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.searcher.__exit__(exc_type, exc_val, exc_tb)
+        if self.find_background:
+            self.searcher.__exit__(exc_type, exc_val, exc_tb)
 
     def respond(self, utt: str):
         assert self.find_background
@@ -98,22 +91,29 @@ class ChatBot:
         if len(entities) > 0:
             self._update_background(entities)
 
-        answer = self.do_answer(utt, self.background)
+        answer = self.do_answer([utt, self.background])[0]
         return answer, self.background
 
-    def do_answer(self, utt, background):
-        self.dialogue_history.append(Turn(utt, "nix"))
-        answer = generate_answer(
-            self.SEP,
-            background,
-            self.max_length,
-            self.min_length,
-            self.model,
-            self.tokenizer,
-            self.dialogue_history[-self.num_historic_turns :],
+    def do_answer(self, utts_backgrounds: List):
+        batch = []
+        if len(self.dialogue_history) == 0:
+            self.dialogue_history = [[] for _ in range(len(utts_backgrounds))]
+
+        for k, (utt, background) in enumerate(utts_backgrounds):
+            self.dialogue_history[k].append(Turn(utt, "nix"))
+            inputt, _ = build_input_target(
+                background, self.dialogue_history[k], self.SEP
+            )
+            batch.append(
+                " "  # see: https://github.com/huggingface/transformers/blob/5ddd8d6531c8c49fdd281b55b93f6c81c9826f4b/examples/summarization/bart/evaluate_cnn.py#L66
+                + inputt
+            )
+        answers = generate_answer(
+            batch, self.max_length, self.min_length, self.model, self.tokenizer,
         )
-        self.dialogue_history[-1] = Turn(utt, answer)
-        return answer
+        for k, ((utt, _), answer) in enumerate(zip(utts_backgrounds, answers)):
+            self.dialogue_history[k][-1] = Turn(utt, answer)
+        return answers
 
     def reset(self):
         self.dialogue_history = []

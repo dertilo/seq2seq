@@ -2,7 +2,7 @@ from pprint import pprint
 
 import os
 from tqdm import tqdm
-from util import data_io
+from util import data_io, util_methods
 
 from coqa_evaluation import CoQAEvaluator
 from seq2seq_chatbot import ChatBot
@@ -36,15 +36,18 @@ class CheatBot:
         pass
 
 
-def evaluate_chatbot(chatbot):
+def evaluate_chatbot(chatbot,batch_size=1):
     def one_dialogue(datum):
         chatbot.reset()
-        for q, a in zip(datum["questions"], datum["answers"]):
+        g = util_methods.iterable_to_batches(datum["questions"],batch_size=batch_size)
+        for batch in g:
             if isinstance(chatbot, CheatBot):
-                answer = chatbot.do_answer(datum["id"], q["turn_id"])
+                answers = [chatbot.do_answer(datum["id"], batch[0]["turn_id"])]
             else:
-                answer = chatbot.do_answer(q["input_text"], datum["story"])
-            yield (datum["id"], q["turn_id"]), answer
+                batch = [(q["input_text"], datum["story"]) for q in batch]
+                answers = chatbot.do_answer(batch)
+            for q,a in zip(batch,answers):
+                yield (datum["id"], q["turn_id"]), a
 
     g = ((k, a) for datum in data for k, a in one_dialogue(datum))
     pred_data = {k: a for k, a in tqdm(g)}
@@ -65,7 +68,7 @@ if __name__ == "__main__":
     scores["cheatbot"] = evaluate_chatbot(CheatBot(data))
     scores["echobot"] = evaluate_chatbot(CheatBot(data, do_echo=True))
     with ChatBot(checkpoint, find_background=False) as chatbot:
-        scores["bart"] = evaluate_chatbot(chatbot)
+        scores["bart"] = evaluate_chatbot(chatbot,batch_size=4)
     pprint({n: s["overall"] for n, s in scores.items()})
 
     """
