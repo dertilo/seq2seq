@@ -1,15 +1,11 @@
 import os
 from typing import List
 
-import spacy
 import torch
 from summarization.bart.finetune import SummarizationTrainer
 from tqdm import tqdm
 from transformers import BartTokenizer
 from util import data_io
-from whoosh import index
-from whoosh.analysis import StemmingAnalyzer
-from whoosh.fields import TEXT, ID, Schema
 
 from build_seq2seq_corpus import build_input_target, Turn
 
@@ -58,20 +54,34 @@ class ChatBot:
     min_length = 3
     num_historic_turns = 2
 
-    def __init__(self, checkpoint_file) -> None:
+    def __init__(self, checkpoint_file, find_background:bool=True) -> None:
         assert checkpoint_file.endswith(".ckpt")
         self.model = SummarizationTrainer.load_from_checkpoint(
             checkpoint_file
         ).model.to(DEFAULT_DEVICE)
         self.tokenizer = BartTokenizer.from_pretrained("bart-large")
         self.SEP = self.tokenizer.special_tokens_map["sep_token"]
-        self.spacy_nlp = spacy.load("en_core_web_sm")
+        self.find_background = find_background
+        if find_background:
+            import spacy
+
+            self.spacy_nlp = spacy.load("en_core_web_sm")
         super().__init__()
 
     def __enter__(self):
-        ix = index.open_dir(INDEX_DIR)
-        self.searcher = ix.searcher()
-        self.qp = QueryParser("story", schema=ix.schema)
+        if self.find_background:
+            from whoosh import index
+
+            INDEX_DIR = "coqa_index"
+            if not os.path.isdir(INDEX_DIR):
+                schema, data = build_schema_and_corpus()
+                build_index(data, schema, index_dir=INDEX_DIR)
+                print("done building corpus")
+
+            ix = index.open_dir(INDEX_DIR)
+            self.searcher = ix.searcher()
+            self.qp = QueryParser("story", schema=ix.schema)
+
         self.background = (
             "The weather was rainy today, but maybe its going to be sunny tomorrow."
         )
@@ -82,6 +92,7 @@ class ChatBot:
         self.searcher.__exit__(exc_type, exc_val, exc_tb)
 
     def respond(self, utt: str):
+        assert self.find_background
         doc = self.spacy_nlp(utt)
         entities = [s.text for s in doc.ents]
         if len(entities) > 0:
@@ -128,6 +139,7 @@ def run_interaction(checkpoint: str):
 
 
 def build_index(data, schema, index_dir="indexdir"):
+    from whoosh import index
 
     if not os.path.exists(index_dir):
         os.mkdir(index_dir)
@@ -140,6 +152,9 @@ def build_index(data, schema, index_dir="indexdir"):
 
 
 def build_schema_and_corpus():
+    from whoosh.analysis import StemmingAnalyzer
+    from whoosh.fields import TEXT, ID, Schema
+
     schema = Schema(
         id=ID(stored=True),
         filename=ID(stored=True),
@@ -151,13 +166,6 @@ def build_schema_and_corpus():
         for d in data_io.read_json(file)["data"]
     )
     return schema, data
-
-
-INDEX_DIR = "coqa_index"
-if not os.path.isdir(INDEX_DIR):
-    schema, data = build_schema_and_corpus()
-    build_index(data, schema, index_dir=INDEX_DIR)
-    print("done building corpus")
 
 
 if __name__ == "__main__":
