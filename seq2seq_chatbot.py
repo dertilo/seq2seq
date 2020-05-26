@@ -59,23 +59,23 @@ class ChatBot:
         ix = index.open_dir(INDEX_DIR)
         self.searcher = ix.searcher()
         self.qp = QueryParser("story", schema=ix.schema)
+        self.background = (
+            "The weather was rainy today, but maybe its going to be sunny tomorrow."
+        )
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.searcher.__exit__(exc_type, exc_val, exc_tb)
 
     def respond(self, utt: str):
-        background = (
-            "The weather was rainy today, but maybe its going to be sunny tomorrow."
-        )
         doc = self.spacy_nlp(utt)
         entities = [s.text for s in doc.ents]
         if len(entities) > 0:
-            background = self._build_background(background, entities)
+            self._update_background(entities)
 
         answer = generate_answer(
             self.SEP,
-            background,
+            self.background,
             self.max_length,
             self.min_length,
             self.model,
@@ -83,15 +83,14 @@ class ChatBot:
             utt,
         )
 
-        return answer, background
+        return answer, self.background
 
-    def _build_background(self, former_background, entities):
+    def _update_background(self, entities):
         or_searche = " OR ".join(entities)
         q = self.qp.parse(or_searche)
         results = self.searcher.search(q, limit=1)
         if len(results) > 0:
-            former_background = results[0]["story"]
-        return former_background
+            self.background = results[0]["story"]
 
 
 def run_interaction(checkpoint: str):
