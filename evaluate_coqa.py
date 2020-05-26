@@ -36,17 +36,18 @@ class CheatBot:
         pass
 
 
-def evaluate_chatbot(chatbot,batch_size=1):
+def evaluate_chatbot(chatbot, batch_size=1):
     def one_dialogue(datum):
         chatbot.reset()
-        g = util_methods.iterable_to_batches(datum["questions"],batch_size=batch_size)
+        g = util_methods.iterable_to_batches(datum["questions"], batch_size=batch_size)
         for batch in g:
             if isinstance(chatbot, CheatBot):
                 answers = [chatbot.do_answer(datum["id"], batch[0]["turn_id"])]
             else:
-                batch = [(q["input_text"], datum["story"]) for q in batch]
-                answers = chatbot.do_answer(batch)
-            for q,a in zip(batch,answers):
+                answers = chatbot.do_answer(
+                    [(q["input_text"], datum["story"]) for q in batch]
+                )
+            for q, a in zip(batch, answers):
                 yield (datum["id"], q["turn_id"]), a
 
     g = ((k, a) for datum in data for k, a in one_dialogue(datum))
@@ -68,7 +69,7 @@ if __name__ == "__main__":
     scores["cheatbot"] = evaluate_chatbot(CheatBot(data))
     scores["echobot"] = evaluate_chatbot(CheatBot(data, do_echo=True))
     with ChatBot(checkpoint, find_background=False) as chatbot:
-        scores["bart"] = evaluate_chatbot(chatbot,batch_size=4)
+        scores["bart"] = evaluate_chatbot(chatbot, batch_size=4)
     pprint({n: s["overall"] for n, s in scores.items()})
 
     """
