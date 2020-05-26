@@ -26,7 +26,10 @@ def generate_answer(
     dialog_history: List[Turn],
 ):
     inputt, _ = build_input_target(background, dialog_history, SEP)
-    batch = [" " + inputt]
+    batch = [
+        " "  # see: https://github.com/huggingface/transformers/blob/5ddd8d6531c8c49fdd281b55b93f6c81c9826f4b/examples/summarization/bart/evaluate_cnn.py#L66
+        + inputt
+    ]
     dct = tokenizer.batch_encode_plus(batch, max_length=1024, return_tensors="pt")
     encoded = model.generate(
         input_ids=dct["input_ids"].to(DEFAULT_DEVICE),
@@ -51,8 +54,8 @@ from whoosh.qparser import QueryParser
 
 class ChatBot:
 
-    max_length = 140
-    min_length = 10
+    max_length = 40
+    min_length = 3
     num_historic_turns = 2
 
     def __init__(self, checkpoint_file) -> None:
@@ -85,7 +88,6 @@ class ChatBot:
             self._update_background(entities)
 
         answer = self.do_answer(utt, self.background)
-        self.dialogue_history[-1] = Turn(utt, answer)
         return answer, self.background
 
     def do_answer(self, utt, background):
@@ -99,6 +101,7 @@ class ChatBot:
             self.tokenizer,
             self.dialogue_history[-self.num_historic_turns :],
         )
+        self.dialogue_history[-1] = Turn(utt, answer)
         return answer
 
     def reset(self):
