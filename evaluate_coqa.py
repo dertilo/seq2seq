@@ -39,7 +39,7 @@ def evaluate_chatbot(chatbot, data, batch_size=1):
         if isinstance(chatbot, CheatBot):
             for is_start, (story_id, background, question) in batch:
                 answer = chatbot.do_answer(story_id, question["turn_id"])
-                yield (story_id, question["turn_id"], answer)
+                yield (story_id, question["turn_id"]), answer
         else:
             answers = chatbot.do_answer(
                 [
@@ -50,11 +50,12 @@ def evaluate_chatbot(chatbot, data, batch_size=1):
             for (is_start, (story_id, background, question)), a in zip(batch, answers):
                 yield (story_id, question["turn_id"]), a
 
-    pred_data = {
-        k: v
+    g = (
+        (k, v)
         for batch in coqa_to_batches(data, batch_size)
         for k, v in do_predict(batch)
-    }
+    )
+    pred_data = {k: v for k, v in tqdm(g)}
 
     performance = evaluator.model_performance(pred_data)
     return performance
@@ -67,13 +68,13 @@ if __name__ == "__main__":
     data = data_io.read_json(data_file)["data"]
 
     file = "checkpointepoch=2.ckpt"
-    checkpoint = os.environ["HOME"] + "/data/bart_coqa_seq2seq/" + file
+    checkpoint = os.environ["HOME"] + "/data/bart_seq2seq_dialogue_new/" + file
 
     scores = {}
-    scores["cheatbot"] = evaluate_chatbot(CheatBot(data), data)
-    scores["echobot"] = evaluate_chatbot(CheatBot(data, do_echo=True), data)
+    # scores["cheatbot"] = evaluate_chatbot(CheatBot(data), data)
+    # scores["echobot"] = evaluate_chatbot(CheatBot(data, do_echo=True), data)
     with ChatBot(checkpoint, find_background=False) as chatbot:
-        scores["bart"] = evaluate_chatbot(chatbot, batch_size=1)
+        scores["bart"] = evaluate_chatbot(chatbot, data, batch_size=4)
     pprint({n: s["overall"] for n, s in scores.items()})
 
     """
