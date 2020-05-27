@@ -23,8 +23,16 @@ squad20-val: 20301
 ```
 0. build corpus: `python build_seq2seq_corpus.py`
 0. train: `bash run_train.sh 1 2`
-1. evaluate: `source activate huggingface && export PYTHONPATH=$HOME/transformers/examples` and `python evaluate.py`
-2. on gunther, get model from hpc: `rsync -avz -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" --exclude=.git tilo-himmelsbach@gateway.hpc.tu-berlin.de:/home/users/t/tilo-himmelsbach/data/bart_seq2seq_dialogue_continued/checkpointepoch=2.ckpt ~/data/bart_coqa_seq2seq/`
+1. evaluate-rouge: `source activate huggingface && export PYTHONPATH=$HOME/transformers/examples` and `python evaluate.py`
+2. evaluate-coqa with [coqa-baselines](https://github.com/stanfordnlp/coqa-baselines)
+
+```shell script
+{'bart': {'em': 45.7, 'f1': 63.3, 'turns': 7983},
+ 'cheatbot': {'em': 94.7, 'f1': 97.3, 'turns': 7983}, # should be at 100 percent! but it is not!
+ 'echobot': {'em': 0.0, 'f1': 3.5, 'turns': 7983}}
+```
 
 # dash-frontend
+2. on gunther, get model from hpc: `rsync -avz -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" --exclude=.git tilo-himmelsbach@gateway.hpc.tu-berlin.de:/home/users/t/tilo-himmelsbach/data/bart_seq2seq_dialogue_continued/checkpointepoch=2.ckpt ~/data/bart_coqa_seq2seq/`
+
 ![dash-frontend](images/dash_frontend.jpeg)
