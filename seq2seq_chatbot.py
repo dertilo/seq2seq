@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Tuple
 
 import torch
 from summarization.bart.finetune import SummarizationTrainer
@@ -96,13 +96,16 @@ class ChatBot:
         answer = self.do_answer([utt, self.background])[0]
         return answer, self.background
 
-    def do_answer(self, utts_backgrounds: List):
+    def do_answer(self, utts_backgrounds: List[Tuple[bool, str, str]]):
         batch = []
         if len(self.dialogue_history) == 0:
             self.dialogue_history = [[] for _ in range(len(utts_backgrounds))]
 
-        for k, (utt, background) in enumerate(utts_backgrounds):
-            self.dialogue_history[k].append(Turn(utt, "nix"))
+        for k, (is_first, utt, background) in enumerate(utts_backgrounds):
+            if is_first:
+                self.dialogue_history[k] = [Turn(utt, "nix")]
+            else:
+                self.dialogue_history[k].append(Turn(utt, "nix"))
             inputt, _ = build_input_target(
                 background, self.dialogue_history[k], self.SEP
             )
@@ -113,8 +116,10 @@ class ChatBot:
         answers = generate_answer(
             batch, self.max_length, self.min_length, self.model, self.tokenizer,
         )
-        for k, ((utt, _), answer) in enumerate(zip(utts_backgrounds, answers)):
-            self.dialogue_history[k][-1] = Turn(utt, answer)
+        for k, answer in enumerate(answers):
+            self.dialogue_history[k][-1] = Turn(
+                self.dialogue_history[k][-1].utt, answer
+            )
         return answers
 
     def reset(self):

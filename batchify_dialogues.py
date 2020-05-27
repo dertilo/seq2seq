@@ -19,7 +19,7 @@ def coqa_to_batches(data, batch_size=3):
     dialog_it = iter(data)
 
     def get_id_questions(d):
-        return [(d["id"], q) for q in d["questions"]]
+        return [(d["id"],d["story"], q) for q in d["questions"]]
 
     gs = [utt_generator(dialog_it, get_id_questions) for _ in range(batch_size)]
     while True:
