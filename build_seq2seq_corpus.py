@@ -11,7 +11,7 @@ from danqi_chen import danqi_concatenation, fix_brackets
 
 class Turn(NamedTuple):
     request: str
-    response: str
+    response: str = None
 
 
 def get_limited_history(history: List, k: int, hist_len: int):
@@ -121,18 +121,22 @@ def process_text(s):
 
 def build_input_target(background, turns: List[Turn], SEP_TOKEN, use_danqi=False):
 
+    question, target = turns.pop(-1)
+    # question = process_text(question) #?
+    dialogue = build_input(background, turns, SEP_TOKEN, question, use_danqi)
+    return dialogue, target
+
+
+def build_input(background, turns, SEP_TOKEN, question, use_danqi):
+    turns = [(process_text(q), process_text(a)) for q, a in turns]
     if use_danqi:
-        question, answer = turns.pop(-1)
-        turns = [(process_text(q), process_text(a)) for q, a in turns]
         dialogue = danqi_concatenation(
             process_text(background), turns, process_text(question)
         )
-        target = answer
     else:
-        utterances = [process_text(x) for turn in turns for x in turn if x != SILENCE]
-        target = process_text(utterances.pop(-1))
-        dialogue = SEP_TOKEN.join([process_text(background)] + utterances)
-    return dialogue, target
+        utterances = [x for (q, a) in turns for x in [q, a] if x != SILENCE]
+        dialogue = SEP_TOKEN.join([process_text(background)] + utterances + [question])
+    return dialogue
 
 
 tokenizer = BartTokenizer.from_pretrained("bart-large")

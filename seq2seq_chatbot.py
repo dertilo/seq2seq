@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Dict, Any
 
 import torch
 from summarization.bart.finetune import SummarizationTrainer
@@ -8,14 +8,14 @@ from transformers import BartTokenizer
 from util import data_io
 
 from batchify_dialogues import DialogRequest, Answer
-from build_seq2seq_corpus import build_input_target, Turn
+from build_seq2seq_corpus import Turn, build_input
 
 DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def generate_answer(
     batch: List[str], max_length, min_length, model, tokenizer,
-):
+) -> List[str]:
     dct = tokenizer.batch_encode_plus(
         batch, max_length=1024, return_tensors="pt", pad_to_max_length=True
     )
@@ -83,7 +83,7 @@ class ChatBot:
         self.background = (
             "The weather was rainy today, but maybe its going to be sunny tomorrow."
         )
-        self.histories: List[List[Turn]] = []
+        self.histories: Dict[Any : List[Turn]] = {}
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -101,31 +101,43 @@ class ChatBot:
         return answer, self.background
 
     def do_answer(self, batch_request: List[DialogRequest]) -> List[Answer]:
-        batch = []
-        if len(self.histories) == 0:
-            self.histories = [[] for _ in range(len(batch_request))]
+        self._prepare_histories(self.histories, batch_request)
+        batch = self._build_batch(batch_request)
 
-        for k, (is_first, utt, background) in enumerate(batch_request):
-            if is_first:
-                self.histories[k] = [Turn(utt, "nix")]
-            else:
-                self.histories[k].append(Turn(utt, "nix"))
-            inputt, _ = build_input_target(
-                background,
-                self.histories[k][-self.num_historic_turns :],
-                self.SEP,
-                use_danqi=self.use_danqi,
-            )
-            batch.append(
-                " "  # see: https://github.com/huggingface/transformers/blob/5ddd8d6531c8c49fdd281b55b93f6c81c9826f4b/examples/summarization/bart/evaluate_cnn.py#L66
-                + inputt
-            )
         answers = generate_answer(
             batch, self.max_length, self.min_length, self.model, self.tokenizer,
         )
-        for k, answer in enumerate(answers):
-            self.histories[k][-1] = Turn(self.histories[k][-1].request, answer)
+        answers = [
+            Answer(dr.dialogue_id, dr.turn_id, a)
+            for dr, a in zip(batch_request, answers)
+        ]
+        for dr, a in zip(batch_request, answers):
+            self.histories[dr.dialogue_id].append(Turn(dr.question, a.utterance))
         return answers
+
+    @staticmethod
+    def _prepare_histories(histories, batch_request):
+        for dr in batch_request:
+            if dr.dialogue_id not in histories:
+                histories[dr.dialogue_id] = []
+        batch_ids = [dr.dialogue_id for dr in batch_request]
+        for eid in histories.keys():
+            if eid not in batch_ids:
+                histories.pop(eid)
+
+    def _build_batch(self, batch_request):
+        batch = [
+            " "  # see: https://github.com/huggingface/transformers/blob/5ddd8d6531c8c49fdd281b55b93f6c81c9826f4b/examples/summarization/bart/evaluate_cnn.py#L66
+            + build_input(
+                dr.background,
+                self.histories[dr.dialogue_id][-self.num_historic_turns :],
+                self.SEP,
+                question=dr.question,
+                use_danqi=self.use_danqi,
+            )
+            for dr in batch_request
+        ]
+        return batch
 
     def reset(self):
         self.histories = []
