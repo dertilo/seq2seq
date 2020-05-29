@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple
+from typing import List
 
 import torch
 from summarization.bart.finetune import SummarizationTrainer
@@ -7,6 +7,7 @@ from tqdm import tqdm
 from transformers import BartTokenizer
 from util import data_io
 
+from batchify_dialogues import DialogRequest, Answer
 from build_seq2seq_corpus import build_input_target, Turn
 
 DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -82,7 +83,7 @@ class ChatBot:
         self.background = (
             "The weather was rainy today, but maybe its going to be sunny tomorrow."
         )
-        self.dialogue_history: List[Turn] = []
+        self.histories: List[List[Turn]] = []
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -99,19 +100,19 @@ class ChatBot:
         answer = self.do_answer([utt, self.background])[0]
         return answer, self.background
 
-    def do_answer(self, utts_backgrounds: List[Tuple[bool, str, str]]):
+    def do_answer(self, batch_request: List[DialogRequest]) -> List[Answer]:
         batch = []
-        if len(self.dialogue_history) == 0:
-            self.dialogue_history = [[] for _ in range(len(utts_backgrounds))]
+        if len(self.histories) == 0:
+            self.histories = [[] for _ in range(len(batch_request))]
 
-        for k, (is_first, utt, background) in enumerate(utts_backgrounds):
+        for k, (is_first, utt, background) in enumerate(batch_request):
             if is_first:
-                self.dialogue_history[k] = [Turn(utt, "nix")]
+                self.histories[k] = [Turn(utt, "nix")]
             else:
-                self.dialogue_history[k].append(Turn(utt, "nix"))
+                self.histories[k].append(Turn(utt, "nix"))
             inputt, _ = build_input_target(
                 background,
-                self.dialogue_history[k][-self.num_historic_turns :],
+                self.histories[k][-self.num_historic_turns :],
                 self.SEP,
                 use_danqi=self.use_danqi,
             )
@@ -123,13 +124,11 @@ class ChatBot:
             batch, self.max_length, self.min_length, self.model, self.tokenizer,
         )
         for k, answer in enumerate(answers):
-            self.dialogue_history[k][-1] = Turn(
-                self.dialogue_history[k][-1].request, answer
-            )
+            self.histories[k][-1] = Turn(self.histories[k][-1].request, answer)
         return answers
 
     def reset(self):
-        self.dialogue_history = []
+        self.histories = []
 
     def _update_background(self, entities):
         or_searche = " OR ".join(entities)

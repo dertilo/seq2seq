@@ -1,10 +1,12 @@
+from typing import List
+
 from pprint import pprint
 
 import os
 from tqdm import tqdm
 from util import data_io
 
-from batchify_dialogues import coqa_to_batches
+from batchify_dialogues import coqa_to_batches, DialogRequest, Answer
 from coqa_evaluation import CoQAEvaluator
 from seq2seq_chatbot import ChatBot
 
@@ -24,8 +26,11 @@ class CheatBot:
         }
         super().__init__()
 
-    def do_answer(self, story_id, turn_id):
-        return self.gold_preds[(story_id, turn_id)]
+    def do_answer(self, batch: List[DialogRequest]) -> List[Answer]:
+        return [self.do_cheat(r.dialogue_id, r.turn_id) for r in batch]
+
+    def do_cheat(self, story_id, turn_id) -> Answer:
+        return Answer(story_id, turn_id, self.gold_preds[(story_id, turn_id)])
 
     def __enter__(self):
         return self
@@ -35,25 +40,11 @@ class CheatBot:
 
 
 def evaluate_chatbot(chatbot, data, batch_size=1):
-    def do_predict(batch):
-        if isinstance(chatbot, CheatBot):
-            for is_start, (story_id, background, question) in batch:
-                answer = chatbot.do_answer(story_id, question["turn_id"])
-                yield (story_id, question["turn_id"]), answer
-        else:
-            answers = chatbot.do_answer(
-                [
-                    (is_start, question["input_text"], background)
-                    for is_start, (story_id, background, question) in batch
-                ]
-            )
-            for (is_start, (story_id, background, question)), a in zip(batch, answers):
-                yield (story_id, question["turn_id"]), a
 
     g = (
-        (k, v)
+        ((a.dialogue_id, a.turn_id), a.utterance)
         for batch in coqa_to_batches(data, batch_size)
-        for k, v in do_predict(batch)
+        for a in chatbot.do_answer(batch)
     )
     pred_data = {k: v for k, v in tqdm(g)}
 
@@ -72,10 +63,10 @@ if __name__ == "__main__":
     checkpoint = os.environ["HOME"] + "/data/bart_coqa_seq2seq/" + file
 
     scores = {}
-    # scores["cheatbot"] = evaluate_chatbot(CheatBot(data), data)
-    # scores["echobot"] = evaluate_chatbot(CheatBot(data, do_echo=True), data)
-    with ChatBot(checkpoint, find_background=False,use_danqi=True) as chatbot:
-        scores["bart"] = evaluate_chatbot(chatbot, data, batch_size=16)
+    scores["cheatbot"] = evaluate_chatbot(CheatBot(data), data)
+    scores["echobot"] = evaluate_chatbot(CheatBot(data, do_echo=True), data)
+    # with ChatBot(checkpoint, find_background=False, use_danqi=True) as chatbot:
+    #     scores["bart"] = evaluate_chatbot(chatbot, data, batch_size=16)
     pprint({n: s["overall"] for n, s in scores.items()})
 
     """
