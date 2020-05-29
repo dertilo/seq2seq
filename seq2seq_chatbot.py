@@ -48,7 +48,9 @@ class ChatBot:
     min_length = 3
     num_historic_turns = 2
 
-    def __init__(self, checkpoint_file, find_background: bool = True) -> None:
+    def __init__(
+        self, checkpoint_file, find_background: bool = True, use_danqi=True
+    ) -> None:
         assert checkpoint_file.endswith(".ckpt")
         self.model = SummarizationTrainer.load_from_checkpoint(
             checkpoint_file
@@ -56,6 +58,7 @@ class ChatBot:
         self.tokenizer = BartTokenizer.from_pretrained("bart-large")
         self.SEP = self.tokenizer.special_tokens_map["sep_token"]
         self.find_background = find_background
+        self.use_danqi = use_danqi
         if find_background:
             import spacy
 
@@ -107,7 +110,10 @@ class ChatBot:
             else:
                 self.dialogue_history[k].append(Turn(utt, "nix"))
             inputt, _ = build_input_target(
-                background, self.dialogue_history[k], self.SEP
+                background,
+                self.dialogue_history[k][-self.num_historic_turns :],
+                self.SEP,
+                use_danqi=self.use_danqi,
             )
             batch.append(
                 " "  # see: https://github.com/huggingface/transformers/blob/5ddd8d6531c8c49fdd281b55b93f6c81c9826f4b/examples/summarization/bart/evaluate_cnn.py#L66
@@ -118,7 +124,7 @@ class ChatBot:
         )
         for k, answer in enumerate(answers):
             self.dialogue_history[k][-1] = Turn(
-                self.dialogue_history[k][-1].utt, answer
+                self.dialogue_history[k][-1].request, answer
             )
         return answers
 

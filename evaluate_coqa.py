@@ -68,13 +68,14 @@ if __name__ == "__main__":
     data = data_io.read_json(data_file)["data"]
 
     file = "checkpointepoch=2.ckpt"
-    checkpoint = os.environ["HOME"] + "/data/bart_seq2seq_dialogue_new/" + file
+    # checkpoint = os.environ["HOME"] + "/data/bart_seq2seq_dialogue_new_continued/" + file
+    checkpoint = os.environ["HOME"] + "/data/bart_coqa_seq2seq/" + file
 
     scores = {}
     # scores["cheatbot"] = evaluate_chatbot(CheatBot(data), data)
     # scores["echobot"] = evaluate_chatbot(CheatBot(data, do_echo=True), data)
-    with ChatBot(checkpoint, find_background=False) as chatbot:
-        scores["bart"] = evaluate_chatbot(chatbot, data, batch_size=4)
+    with ChatBot(checkpoint, find_background=False,use_danqi=True) as chatbot:
+        scores["bart"] = evaluate_chatbot(chatbot, data, batch_size=16)
     pprint({n: s["overall"] for n, s in scores.items()})
 
     """
