@@ -57,21 +57,27 @@ if __name__ == "__main__":
     evaluator = CoQAEvaluator(data_file)
 
     data = data_io.read_json(data_file)["data"]
+    scores = {}
+
+    # file = "checkpointepoch=2.ckpt"
+    # checkpoint = os.environ["HOME"] + "/data/bart_coqa_seq2seq/" + file
+
+    # scores["cheatbot"] = evaluate_chatbot(CheatBot(data), data)
+    # scores["echobot"] = evaluate_chatbot(CheatBot(data, do_echo=True), data)
+    # with ChatBot(checkpoint, find_background=False, use_danqi=False) as chatbot:
+    #     scores["bart"] = evaluate_chatbot(chatbot, data, batch_size=16)
 
     file = "checkpointepoch=2.ckpt"
-    # checkpoint = os.environ["HOME"] + "/data/bart_seq2seq_dialogue_new_continued/" + file
-    checkpoint = os.environ["HOME"] + "/data/bart_coqa_seq2seq/" + file
+    checkpoint = os.environ["HOME"] + "/data/bart_seq2seq_dialogue_new_continued/" + file
 
-    scores = {}
-    scores["cheatbot"] = evaluate_chatbot(CheatBot(data), data)
-    scores["echobot"] = evaluate_chatbot(CheatBot(data, do_echo=True), data)
-    # with ChatBot(checkpoint, find_background=False, use_danqi=True) as chatbot:
-    #     scores["bart"] = evaluate_chatbot(chatbot, data, batch_size=16)
+    with ChatBot(checkpoint, find_background=False, use_danqi=False) as chatbot:
+        scores["bart-danqi"] = evaluate_chatbot(chatbot, data, batch_size=16)
     pprint({n: s["overall"] for n, s in scores.items()})
 
     """
     # TODO(tilo): why are gold-answers not reaching 100% ??
-    {'bart': {'em': 45.7, 'f1': 63.3, 'turns': 7983},
+    {'bart': {'em': 47.9, 'f1': 65.5, 'turns': 7983}}
+    {'bart-danqi': {'em': 31.6, 'f1': 43.7, 'turns': 7983}} # TODO(tilo): why is danqi not working?
      'cheatbot': {'em': 94.7, 'f1': 97.3, 'turns': 7983},
      'echobot': {'em': 0.0, 'f1': 3.5, 'turns': 7983}}
     """
