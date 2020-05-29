@@ -120,10 +120,11 @@ class ChatBot:
         for dr in batch_request:
             if dr.dialogue_id not in histories:
                 histories[dr.dialogue_id] = []
+
         batch_ids = [dr.dialogue_id for dr in batch_request]
-        for eid in histories.keys():
-            if eid not in batch_ids:
-                histories.pop(eid)
+        to_be_removd = [eid for eid in histories.keys() if eid not in batch_ids]
+        for eid in to_be_removd:
+            histories.pop(eid)
 
     def _build_batch(self, batch_request):
         batch = [
