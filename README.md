@@ -27,7 +27,8 @@ squad20-val: 20301
 2. evaluate-coqa with [coqa-baselines](https://github.com/stanfordnlp/coqa-baselines)
 
 ```shell script
-{'bart': {'em': 45.7, 'f1': 63.3, 'turns': 7983},
+{'bart': {'em': 47.9, 'f1': 65.5, 'turns': 7983},
+ 'bart-danqi': {'em': 31.6, 'f1': 43.7, 'turns': 7983}, # TODO(tilo): why is danqi not working?
  'cheatbot': {'em': 94.7, 'f1': 97.3, 'turns': 7983}, # should be at 100 percent! but it is not!
  'echobot': {'em': 0.0, 'f1': 3.5, 'turns': 7983}}
 ```
