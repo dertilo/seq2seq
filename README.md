@@ -37,3 +37,6 @@ squad20-val: 20301
 2. on gunther, get model from hpc: `rsync -avz -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" --exclude=.git tilo-himmelsbach@gateway.hpc.tu-berlin.de:/home/users/t/tilo-himmelsbach/data/bart_seq2seq_dialogue_continued/checkpointepoch=2.ckpt ~/data/bart_coqa_seq2seq/`
 
 ![dash-frontend](images/dash_frontend.jpeg)
+
+# similar projects
+* https://github.com/NTU-SQUAD/transformers-coqa
