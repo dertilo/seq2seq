@@ -22,7 +22,26 @@ coqa-val: 7982
 squad20-val: 20301
 ```
 0. build corpus: `python build_seq2seq_corpus.py`
-0. train: `bash run_train.sh 1 2`
+0. train: optionally continue from`--checkpoint=$HOME/data/bart_seq2seq_dialogue_new/checkpointepoch=2.ckpt \`
+```shell script
+cd ../transformers
+python examples/seq2seq/finetune.py \
+--data_dir=$HOME/data/seq2seq_dialogue \
+--model_name_or_path=sshleifer/distilbart-xsum-12-6 \
+--learning_rate=3e-5 \
+--train_batch_size=4 \
+--eval_batch_size=4 \
+--output_dir=debug \
+--num_train_epochs 1 \
+--fp16 \
+--gpus 2 \
+--do_train \
+--do_predict \
+--n_val 1000 \
+--val_check_interval 0.1 \
+--sortish_sampler
+```
+
 1. evaluate-rouge: `source activate huggingface && export PYTHONPATH=$HOME/transformers/examples` and `python evaluate.py`
 2. evaluate-coqa with [coqa-baselines](https://github.com/stanfordnlp/coqa-baselines)
 
@@ -32,6 +51,7 @@ squad20-val: 20301
  'cheatbot': {'em': 94.7, 'f1': 97.3, 'turns': 7983}, # should be at 100 percent! but it is not!
  'echobot': {'em': 0.0, 'f1': 3.5, 'turns': 7983}}
 ```
+* trained for ~30 hours on 2 GPUs
 
 # dash-frontend
 1. on gunther, get model from hpc: `rsync -avz -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" --exclude=.git tilo-himmelsbach@gateway.hpc.tu-berlin.de:/home/users/t/tilo-himmelsbach/data/bart_seq2seq_dialogue_continued/checkpointepoch=2.ckpt ~/data/bart_coqa_seq2seq/`
