@@ -24,14 +24,15 @@ squad20-val: 20301
 0. build corpus: `python build_seq2seq_corpus.py`
 0. train: optionally continue from`--checkpoint=$HOME/data/bart_seq2seq_dialogue_new/checkpointepoch=2.ckpt \`
 ```shell script
-cd ../transformers
-python examples/seq2seq/finetune.py \
+OMP_NUM_THREADS=2 wandb init # on frontend
+export PYTHONPATH=~/transformers/examples
+CUDA_VISIBLE_DEVICES=1 WANDB_MODE=dryrun python ../transformers/examples/seq2seq/finetune.py \
 --data_dir=$HOME/data/seq2seq_dialogue \
---model_name_or_path=sshleifer/distilbart-xsum-12-6 \
+--model_name_or_path=sshleifer/distilbart-xsum-12-1 \
 --learning_rate=3e-5 \
 --train_batch_size=4 \
 --eval_batch_size=4 \
---output_dir=debug \
+--output_dir=coqa-distilbart-xsum-12-1 \
 --num_train_epochs 1 \
 --fp16 \
 --gpus 2 \
@@ -39,7 +40,8 @@ python examples/seq2seq/finetune.py \
 --do_predict \
 --n_val 1000 \
 --val_check_interval 0.1 \
---sortish_sampler
+--sortish_sampler \
+--wandb_project seq2seq-chatbot
 ```
 
 1. evaluate-rouge: `source activate huggingface && export PYTHONPATH=$HOME/transformers/examples` and `python evaluate.py`
