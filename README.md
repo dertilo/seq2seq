@@ -23,6 +23,7 @@ squad20-val: 20301
 ```
 0. build corpus: `python build_seq2seq_corpus.py`
 0. train: optionally continue from`--checkpoint=$HOME/data/bart_seq2seq_dialogue_new/checkpointepoch=2.ckpt \`
+0. only once run train-command on frontend with `OMP_NUM_THREADS=4` to downloads pretrained model
 ```shell script
 OMP_NUM_THREADS=2 wandb init # on frontend
 export PYTHONPATH=~/transformers/examples
@@ -35,7 +36,7 @@ CUDA_VISIBLE_DEVICES=1 WANDB_MODE=dryrun python ../transformers/examples/seq2seq
 --output_dir=coqa-distilbart-xsum-12-1 \
 --num_train_epochs 1 \
 --fp16 \
---gpus 2 \
+--gpus 1 \
 --do_train \
 --do_predict \
 --n_val 1000 \
