@@ -31,7 +31,7 @@ CUDA_VISIBLE_DEVICES=1 WANDB_MODE=dryrun python ../transformers/examples/seq2seq
 --data_dir=$HOME/data/seq2seq_dialogue \
 --model_name_or_path=sshleifer/distilbart-xsum-12-1 \
 --learning_rate=3e-5 \
---train_batch_size=4 \
+--train_batch_size=2 \
 --eval_batch_size=4 \
 --output_dir=coqa-distilbart-xsum-12-1 \
 --num_train_epochs 1 \
