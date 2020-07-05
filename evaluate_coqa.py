@@ -1,3 +1,4 @@
+import sys
 from typing import List
 
 from pprint import pprint
@@ -7,7 +8,7 @@ from tqdm import tqdm
 from util import data_io
 
 from batchify_dialogues import coqa_to_batches, DialogRequest, Answer
-from coqa_evaluation import CoQAEvaluator
+from coqa_evaluator import CoQAEvaluator
 from seq2seq_chatbot import ChatBot
 
 
@@ -67,8 +68,7 @@ if __name__ == "__main__":
     # with ChatBot(checkpoint, find_background=False, use_danqi=False) as chatbot:
     #     scores["bart"] = evaluate_chatbot(chatbot, data, batch_size=16)
 
-    file = "checkpointepoch=2.ckpt"
-    checkpoint = os.environ["HOME"] + "/data/bart_seq2seq_dialogue_new_continued/" + file
+    checkpoint = sys.argv[1]
 
     with ChatBot(checkpoint, find_background=False, use_danqi=False) as chatbot:
         scores["bart-danqi"] = evaluate_chatbot(chatbot, data, batch_size=16)

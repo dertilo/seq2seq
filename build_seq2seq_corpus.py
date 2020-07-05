@@ -139,11 +139,12 @@ def build_input(background, turns, SEP_TOKEN, question, use_danqi):
     return dialogue
 
 
-tokenizer = BartTokenizer.from_pretrained("bart-large")
-# BOS = tokenizer.special_tokens_map['bos_token']
-SEP = tokenizer.special_tokens_map["sep_token"]
 
 if __name__ == "__main__":
+    tokenizer = BartTokenizer.from_pretrained("bart-large")
+    # BOS = tokenizer.special_tokens_map['bos_token']
+    SEP = tokenizer.special_tokens_map["sep_token"]
+
     datagenerators = {
         "train": [
             # ("topicalchat-train", topicalchat(hist_len=3)),

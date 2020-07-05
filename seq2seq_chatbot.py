@@ -2,7 +2,7 @@ import os
 from typing import List, Dict, Any
 
 import torch
-from summarization.bart.finetune import SummarizationTrainer
+from seq2seq.finetune import SummarizationModule
 from tqdm import tqdm
 from transformers import BartTokenizer
 from util import data_io
@@ -17,7 +17,11 @@ def generate_answer(
     batch: List[str], max_length, min_length, model, tokenizer,
 ) -> List[str]:
     dct = tokenizer.batch_encode_plus(
-        batch, max_length=1024, return_tensors="pt", pad_to_max_length=True
+        batch,
+        max_length=1024,
+        return_tensors="pt",
+        pad_to_max_length=True,
+        verbose=False,
     )
     encoded_batch = model.generate(
         input_ids=dct["input_ids"].to(DEFAULT_DEVICE),
@@ -40,9 +44,6 @@ def generate_answer(
     return answers
 
 
-from whoosh.qparser import QueryParser
-
-
 class ChatBot:
 
     max_length = 40
@@ -53,10 +54,10 @@ class ChatBot:
         self, checkpoint_file, find_background: bool = True, use_danqi=True
     ) -> None:
         assert checkpoint_file.endswith(".ckpt")
-        self.model = SummarizationTrainer.load_from_checkpoint(
-            checkpoint_file
-        ).model.to(DEFAULT_DEVICE)
-        self.tokenizer = BartTokenizer.from_pretrained("bart-large")
+        self.model = SummarizationModule.load_from_checkpoint(checkpoint_file).model.to(
+            DEFAULT_DEVICE
+        )
+        self.tokenizer = BartTokenizer.from_pretrained("sshleifer/distilbart-xsum-12-1")
         self.SEP = self.tokenizer.special_tokens_map["sep_token"]
         self.find_background = find_background
         self.use_danqi = use_danqi
@@ -68,6 +69,7 @@ class ChatBot:
 
     def __enter__(self):
         if self.find_background:
+            from whoosh.qparser import QueryParser
             from whoosh import index
 
             INDEX_DIR = "coqa_index"
@@ -116,7 +118,7 @@ class ChatBot:
         return answers
 
     @staticmethod
-    def _prepare_histories(histories, batch_request):
+    def _prepare_histories(histories: Dict, batch_request):
         for dr in batch_request:
             if dr.dialogue_id not in histories:
                 histories[dr.dialogue_id] = []
@@ -141,7 +143,7 @@ class ChatBot:
         return batch
 
     def reset(self):
-        self.histories = []
+        self.histories = {}
 
     def _update_background(self, entities):
         or_searche = " OR ".join(entities)

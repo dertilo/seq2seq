@@ -26,6 +26,7 @@ squad20-val: 20301
 0. only once run train-command on frontend with `OMP_NUM_THREADS=4` to downloads pretrained model
 ```shell script
 OMP_NUM_THREADS=2 wandb init # on frontend
+
 export PYTHONPATH=~/transformers/examples
 CUDA_VISIBLE_DEVICES=1 WANDB_MODE=dryrun python ../transformers/examples/seq2seq/finetune.py \
 --data_dir=$HOME/data/seq2seq_dialogue \
@@ -33,8 +34,8 @@ CUDA_VISIBLE_DEVICES=1 WANDB_MODE=dryrun python ../transformers/examples/seq2seq
 --learning_rate=3e-5 \
 --train_batch_size=2 \
 --eval_batch_size=4 \
---output_dir=coqa-distilbart-xsum-12-1 \
---num_train_epochs 1 \
+--output_dir=coqa-danqi-distilbart-xsum-12-1 \
+--num_train_epochs 10 \
 --fp16 \
 --gpus 1 \
 --do_train \
@@ -42,6 +43,7 @@ CUDA_VISIBLE_DEVICES=1 WANDB_MODE=dryrun python ../transformers/examples/seq2seq
 --n_val 1000 \
 --val_check_interval 0.1 \
 --sortish_sampler \
+--logger wandb \
 --wandb_project seq2seq-chatbot
 ```
 

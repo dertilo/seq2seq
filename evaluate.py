@@ -36,7 +36,7 @@ def generate_summaries(
             device
         )
 
-    tokenizer = BartTokenizer.from_pretrained("bart-large")
+    tokenizer = BartTokenizer.from_pretrained("sshleifer/distilbart-xsum-12-1")
 
     max_length = 140
     min_length = 55
@@ -67,7 +67,8 @@ if __name__ == "__main__":
     HOME = os.environ["HOME"]
     rouge = Rouge()
     sources = [
-        " " + x.rstrip() # beginning with space?
+        " "  # beginning with space? see: https://github.com/huggingface/transformers/blob/5ddd8d6531c8c49fdd281b55b93f6c81c9826f4b/examples/summarization/bart/evaluate_cnn.py#L66
+        + x.rstrip()
         for x in data_io.read_lines(
             HOME + "/data/seq2seq_dialogue/val.source", limit=1000
         )
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     hyps = list(
         generate_summaries(
             sources,
-            HOME + "/data/bart_seq2seq_dialogue/checkpointepoch=0.ckpt",
+            HOME + "/data/bart_seq2seq_dialogue_continued/checkpointepoch=2.ckpt",
             batch_size=8,
         )
     )
