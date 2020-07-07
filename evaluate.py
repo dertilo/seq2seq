@@ -3,84 +3,68 @@ from pprint import pprint
 
 import torch
 from rouge import Rouge
-from summarization.bart.finetune import SummarizationTrainer
+from seq2seq.run_eval import chunks
+from seq2seq.utils import use_task_specific_params
 from tqdm import tqdm
-from transformers import BartForConditionalGeneration, BartTokenizer
+from transformers import BartForConditionalGeneration, BartTokenizer, \
+    AutoModelForSeq2SeqLM, AutoTokenizer
 from util import data_io
 
 DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def chunks(lst, n):
-    """Yield successive n-sized chunks from lst."""
-    for i in range(0, len(lst), n):
-        yield lst[i : i + n]
-
-
-def generate_summaries(
+def generate_summaries_or_translations(
     examples: list,
-    model_name_or_ckpt: str,
+    model_name: str,
     batch_size: int = 8,
     device: str = DEFAULT_DEVICE,
-):
+    fp16=False,
+    **gen_kwargs,
+) -> None:
     """
-    based on: transformers/examples/summarization/bart/evaluate_cnn.py
+    based on: transformers/examples/seq2seq/run_eval.py
     """
+    model_name = str(model_name)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
+    if fp16:
+        model = model.half()
 
-    if model_name_or_ckpt.endswith(".ckpt"):
-        model = SummarizationTrainer.load_from_checkpoint(model_name_or_ckpt).model.to(
-            device
-        )
-    else:
-        model = BartForConditionalGeneration.from_pretrained(model_name_or_ckpt).to(
-            device
-        )
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    tokenizer = BartTokenizer.from_pretrained("sshleifer/distilbart-xsum-12-1")
-
-    max_length = 140
-    min_length = 55
+    # update config with summarization specific params
+    use_task_specific_params(model, "summarization")
 
     for batch in tqdm(list(chunks(examples, batch_size))):
-        dct = tokenizer.batch_encode_plus(
-            batch, max_length=1024, return_tensors="pt", pad_to_max_length=True
-        )
-        summaries = model.generate(
-            input_ids=dct["input_ids"].to(device),
-            attention_mask=dct["attention_mask"].to(device),
-            num_beams=4,
-            length_penalty=2.0,
-            max_length=max_length
-            + 2,  # +2 from original because we start at step=1 and stop before max_length
-            min_length=min_length + 1,  # +1 from original because we start at step=1
-            no_repeat_ngram_size=3,
-            early_stopping=True,
-            decoder_start_token_id=model.config.eos_token_id,
-        )
-        for g in summaries:
-            yield tokenizer.decode(
-                g, skip_special_tokens=True, clean_up_tokenization_spaces=False
-            )
-
+        if "t5" in model_name:
+            batch = [model.config.prefix + text for text in batch]
+        batch = tokenizer.batch_encode_plus(
+            batch, return_tensors="pt", truncation=True, pad_to_max_length=True
+        ).to(device)
+        summaries = model.generate(**batch, **gen_kwargs)
+        dec = tokenizer.batch_decode(summaries, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+        for hypothesis in dec:
+            yield hypothesis
 
 if __name__ == "__main__":
     HOME = os.environ["HOME"]
     rouge = Rouge()
+    source_file = HOME + "/data/seq2seq_dialogue/val.source"
     sources = [
         " "  # beginning with space? see: https://github.com/huggingface/transformers/blob/5ddd8d6531c8c49fdd281b55b93f6c81c9826f4b/examples/summarization/bart/evaluate_cnn.py#L66
         + x.rstrip()
         for x in data_io.read_lines(
-            HOME + "/data/seq2seq_dialogue/val.source", limit=1000
+            source_file, limit=1000
         )
     ]
+    target_file = HOME + "/data/seq2seq_dialogue/val.target"
     targets = list(
-        data_io.read_lines(HOME + "/data/seq2seq_dialogue/val.target", limit=1000)
+        data_io.read_lines(target_file, limit=1000)
     )
     hyps = list(
-        generate_summaries(
+        generate_summaries_or_translations(
             sources,
             HOME + "/data/bart_seq2seq_dialogue_continued/checkpointepoch=2.ckpt",
-            batch_size=8,
+            batch_size=8,fp16=True
         )
     )
 
