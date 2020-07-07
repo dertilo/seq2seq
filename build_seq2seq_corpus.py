@@ -3,7 +3,7 @@ from collections import namedtuple
 
 from tqdm import tqdm
 from transformers import BartTokenizer
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Tuple
 from util import data_io
 
 from danqi_chen import danqi_concatenation, fix_brackets
@@ -18,7 +18,7 @@ def get_limited_history(history: List, k: int, hist_len: int):
     return history[max(0, k - hist_len) : (k + 1)]
 
 
-def coqa(file_name, hist_len=3,use_danqi=False):
+def coqa(file_name, hist_len=3, use_danqi=False):
 
     file = os.environ["HOME"] + "/data/QA/coqa/" + file_name
     data = data_io.read_json(file)["data"]
@@ -78,6 +78,24 @@ def topicalchat(
         yield from build_dialogues([Utt()] + utterances)
 
 
+def preprocessed_topicalchat(
+    file_name="train",
+    data_path=os.environ["HOME"] + "/data/QA/topical-chat/processed_output",
+    use_danqi=False,
+):
+    backgrounds = data_io.read_lines(os.path.join(data_path, file_name) + ".fct")
+    dialogs = data_io.read_lines(os.path.join(data_path, file_name) + ".src")
+    targets = data_io.read_lines(os.path.join(data_path, file_name) + ".tgt")
+    for b, d, t in tqdm(zip(backgrounds, dialogs, targets)):
+        turns = d.split("_eos")[:-1] + [t.strip("_go").strip("_eos")]
+
+        if len(turns) % 2 != 0:
+            turns = [SILENCE] + turns
+
+        turns = [Turn(turns[k], turns[k + 1]) for k in range(0, len(turns), 2)]
+        yield build_input_target(b, turns, SEP, use_danqi=use_danqi)
+
+
 def squad20(file_name):
 
     file = os.environ["HOME"] + "/data/QA/SQUAD20/" + file_name
@@ -119,7 +137,9 @@ def process_text(s):
     return fix_brackets(s.replace("\n", ""))
 
 
-def build_input_target(background, turns: List[Turn], SEP_TOKEN, use_danqi=False):
+def build_input_target(
+    background: str, turns: List[Turn], SEP_TOKEN, use_danqi=False
+) -> Tuple[str, str]:
 
     question, target = turns.pop(-1)
     # question = process_text(question) #?
@@ -127,37 +147,49 @@ def build_input_target(background, turns: List[Turn], SEP_TOKEN, use_danqi=False
     return dialogue, target
 
 
-def build_input(background, turns, SEP_TOKEN, question, use_danqi):
+def build_input(background, turns: List[Turn], SEP_TOKEN, question: str, use_danqi):
     turns = [(process_text(q), process_text(a)) for q, a in turns]
     if use_danqi:
         dialogue = danqi_concatenation(
             process_text(background), turns, process_text(question)
         )
     else:
-        utterances = [x for (q, a) in turns for x in [q, a] if x != SILENCE]
+        utterances = [
+            x for (q, a) in turns for x in [q, a] if x != SILENCE
+        ]  # TODO(tilo): why?
         dialogue = SEP_TOKEN.join([process_text(background)] + utterances + [question])
     return dialogue
-
 
 
 if __name__ == "__main__":
     tokenizer = BartTokenizer.from_pretrained("sshleifer/distilbart-xsum-12-1")
     # BOS = tokenizer.special_tokens_map['bos_token']
     SEP = tokenizer.special_tokens_map["sep_token"]
+    # data_io.write_lines(
+    #     "/tmp/source_target.csv",
+    #     ("%s\t%s" % (s, t) for s, t in preprocessed_topicalchat()),
+    # )
 
     datagenerators = {
         "train": [
-            # ("topicalchat-train", topicalchat(hist_len=3)),
+            ("topicalchat-train", preprocessed_topicalchat("train")),
             # ("personachat-train", personachat(hist_len=3)),
-            ("coqa-train", coqa("coqa-train-v1.0.json", hist_len=3)),
+            # ("coqa-train", coqa("coqa-train-v1.0.json", hist_len=3)),
             # ("squad20-train", squad20("train-v2.0.json")),
         ],
         "val": [
-            ("coqa-val", coqa("coqa-dev-v1.0.json", hist_len=3)),
+            ("topicalchat-val-freq", preprocessed_topicalchat("valid_freq")),
+            ("topicalchat-val-rare", preprocessed_topicalchat("valid_rare")),
+            # ("coqa-val", coqa("coqa-dev-v1.0.json", hist_len=3)),
+            # ("squad20-val", squad20("dev-v2.0.json")),
+        ],
+        "test": [
+            ("topicalchat-test", preprocessed_topicalchat("test_freq")),
+            # ("coqa-val", coqa("coqa-dev-v1.0.json", hist_len=3)),
             # ("squad20-val", squad20("dev-v2.0.json")),
         ],
     }
-    data_path = os.environ["HOME"] + "/data/seq2seq_dialogue"
+    data_path = os.environ["HOME"] + "/data/seq2seq_dialogue_topicalchat"
     os.makedirs(data_path, exist_ok=True)
 
     for ds, gs in datagenerators.items():
