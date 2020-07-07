@@ -18,7 +18,7 @@ def get_limited_history(history: List, k: int, hist_len: int):
     return history[max(0, k - hist_len) : (k + 1)]
 
 
-def coqa(file_name, hist_len=3):
+def coqa(file_name, hist_len=3,use_danqi=False):
 
     file = os.environ["HOME"] + "/data/QA/coqa/" + file_name
     data = data_io.read_json(file)["data"]
@@ -35,7 +35,7 @@ def coqa(file_name, hist_len=3):
             a_hist = get_history(datum["answers"], k)
             turns = [Turn(req, res) for req, res in zip(q_hist, a_hist)]
             yield build_input_target(
-                fix_brackets(datum["story"]), turns, SEP, use_danqi=True
+                fix_brackets(datum["story"]), turns, SEP, use_danqi=use_danqi
             )
 
 
@@ -141,7 +141,7 @@ def build_input(background, turns, SEP_TOKEN, question, use_danqi):
 
 
 if __name__ == "__main__":
-    tokenizer = BartTokenizer.from_pretrained("bart-large")
+    tokenizer = BartTokenizer.from_pretrained("sshleifer/distilbart-xsum-12-1")
     # BOS = tokenizer.special_tokens_map['bos_token']
     SEP = tokenizer.special_tokens_map["sep_token"]
 
