@@ -4,44 +4,14 @@ from typing import List, Dict, Any
 import torch
 from seq2seq.finetune import SummarizationModule
 from tqdm import tqdm
-from transformers import BartTokenizer
+from transformers import BartTokenizer, BartForConditionalGeneration
 from util import data_io
 
 from batchify_dialogues import DialogRequest, Answer
 from build_seq2seq_corpus import Turn, build_input
+from evaluate import generate_summaries_or_translations, batch_generate
 
 DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
-
-def generate_answer(
-    batch: List[str], max_length, min_length, model, tokenizer,
-) -> List[str]:
-    dct = tokenizer.batch_encode_plus(
-        batch,
-        max_length=1024,
-        return_tensors="pt",
-        pad_to_max_length=True,
-        verbose=False,
-    )
-    encoded_batch = model.generate(
-        input_ids=dct["input_ids"].to(DEFAULT_DEVICE),
-        attention_mask=dct["attention_mask"].to(DEFAULT_DEVICE),
-        num_beams=4,
-        length_penalty=2.0,
-        max_length=max_length + 2,
-        # +2 from original because we start at step=1 and stop before max_length
-        min_length=min_length + 1,  # +1 from original because we start at step=1
-        no_repeat_ngram_size=3,
-        early_stopping=True,
-        decoder_start_token_id=model.config.eos_token_id,
-    )
-    answers = [
-        tokenizer.decode(
-            encoded, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        )
-        for encoded in encoded_batch
-    ]
-    return answers
 
 
 class ChatBot:
@@ -54,7 +24,9 @@ class ChatBot:
         self, checkpoint_file, find_background: bool = True, use_danqi=True
     ) -> None:
         assert checkpoint_file.endswith(".ckpt")
-        self.model = SummarizationModule.load_from_checkpoint(checkpoint_file).model.to(
+        self.model: BartForConditionalGeneration = SummarizationModule.load_from_checkpoint(
+            checkpoint_file
+        ).model.to(
             DEFAULT_DEVICE
         )
         self.tokenizer = BartTokenizer.from_pretrained("sshleifer/distilbart-xsum-12-1")
@@ -106,8 +78,11 @@ class ChatBot:
         self._prepare_histories(self.histories, batch_request)
         batch = self._build_batch(batch_request)
 
-        answers = generate_answer(
-            batch, self.max_length, self.min_length, self.model, self.tokenizer,
+        answers = batch_generate(
+            batch,
+            self.model,
+            self.tokenizer,
+            gen_kwargs={"max_length": self.max_length, "min_length": self.min_length},
         )
         answers = [
             Answer(dr.dialogue_id, dr.turn_id, a)

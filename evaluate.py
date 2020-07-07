@@ -1,5 +1,6 @@
 import os
 from pprint import pprint
+from typing import List, Dict
 
 import torch
 from rouge import Rouge
@@ -8,7 +9,7 @@ from seq2seq.utils import use_task_specific_params
 from tqdm import tqdm
 from transformers import (
     AutoModelForSeq2SeqLM,
-    AutoTokenizer,
+    AutoTokenizer, BartForConditionalGeneration,
 )
 from util import data_io
 
@@ -37,17 +38,23 @@ def generate_summaries_or_translations(
     use_task_specific_params(model, "summarization")
 
     for batch in tqdm(list(chunks(examples, batch_size))):
-        if "t5" in model_name:
-            batch = [model.config.prefix + text for text in batch]
-        batch = tokenizer.batch_encode_plus(
-            batch, return_tensors="pt", truncation=True, pad_to_max_length=True
-        ).to(device)
-        summaries = model.generate(**batch, **gen_kwargs)
-        dec = tokenizer.batch_decode(
-            summaries, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        )
+
+        dec = batch_generate(batch, model, tokenizer, gen_kwargs, device)
         for hypothesis in dec:
             yield hypothesis
+
+
+def batch_generate(
+    batch: List, model:BartForConditionalGeneration, tokenizer, gen_kwargs: Dict, device: str = DEFAULT_DEVICE,
+) -> List:
+    batch_dict = tokenizer.batch_encode_plus(
+        batch, return_tensors="pt", truncation=True, pad_to_max_length=True
+    ).to(device)
+    summaries = model.generate(**batch_dict, **gen_kwargs)
+    dec = tokenizer.batch_decode(
+        summaries, skip_special_tokens=True, clean_up_tokenization_spaces=False
+    )
+    return dec
 
 
 if __name__ == "__main__":
