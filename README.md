@@ -6,6 +6,12 @@
 * [topical-chat](https://github.com/alexa/alexa-prize-topical-chat-dataset)
     + `git clone https://github.com/Shikib/Response-Generation-Baselines.git`
     + `unzip Response-Generation-Baselines/data.zip -d topical-chat`
+    ```shell script
+    topicalchat-train: 179708
+    topicalchat-val-freq: 11273
+    topicalchat-val-rare: 11245
+    topicalchat-test: 11206
+    ```
 * [hotpotqa](https://hotpotqa.github.io/); [hotpot-paper](https://nlp.stanford.edu/pubs/yang2018hotpotqa.pdf)
 * [coqa](https://stanfordnlp.github.io/coqa/)
 * [SQUAD 2.0](https://rajpurkar.github.io/SQuAD-explorer/)
