@@ -3,13 +3,14 @@ from typing import List
 
 from tqdm import tqdm
 from transformers import (
-    AutoTokenizer,
-    AutoModelWithLMHead,
     GPT2LMHeadModel,
     GPT2Tokenizer,
 )
 import torch
-from util import data_io
+from util import data_io, util_methods
+
+DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+print("USING: %s" % DEFAULT_DEVICE)
 
 
 def build_gpt2_input(utterances: List[str]):
@@ -19,12 +20,18 @@ def build_gpt2_input(utterances: List[str]):
         for u in utterances
     ]
 
-    return torch.cat(utts, dim=-1)
+    return torch.cat(utts, dim=-1).to(DEFAULT_DEVICE)
+
+    # batch = [[u + tokenizer.eos_token for u in utterances] for utterances in dialogues]
+    #
+    # return tokenizer.batch_encode_plus(
+    #     batch, return_tensors="pt", truncation=True, padding="max_length",
+    # ).to(DEFAULT_DEVICE)
 
 
 def topicalchat(
     file_name="train",
-    data_path=os.environ["HOME"] + "/hpc/data/QA/topical-chat/processed_output",
+    data_path=os.environ["HOME"] + "/data/QA/topical-chat/processed_output",
 ):
     backgrounds = data_io.read_lines(os.path.join(data_path, file_name) + ".fct")
     dialogs = data_io.read_lines(os.path.join(data_path, file_name) + ".src")
@@ -80,31 +87,39 @@ def dialogue_test():
         )
 
 
+"""
+install transformers from 28th of April, cause microsofts GPT was committed this day
+pip install git+https://github.com/huggingface/transformers.git@d714dfeaa8f019a634f2d565fc161f9b17fe85fb
+"""
+
 if __name__ == "__main__":
 
     # tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-large")
     # model = AutoModelWithLMHead.from_pretrained("microsoft/DialoGPT-large")
 
     tokenizer = GPT2Tokenizer.from_pretrained("microsoft/DialoGPT-small")
-    model = GPT2LMHeadModel.from_pretrained("microsoft/DialoGPT-small")
+    model = (
+        GPT2LMHeadModel.from_pretrained("microsoft/DialoGPT-small")
+        .to(DEFAULT_DEVICE)
+        .eval()
+    )
 
     def answer(input):
-        chat_history_ids = model.generate(
-            input, max_length=1000, pad_token_id=tokenizer.eos_token_id
-        )
-        # pretty print last ouput tokens from bot
+        with torch.no_grad():
+            chat_history_ids = model.generate(
+                input, max_length=1000, pad_token_id=tokenizer.eos_token_id
+            )
+
         return tokenizer.decode(
             chat_history_ids[:, input.shape[-1] :][0], skip_special_tokens=True,
         )
 
-    g = (
-        answer(build_gpt2_input(utts))
-        for utts in topicalchat(
-            file_name="test_rare",
-            data_path=os.environ["HOME"]
-            + "/Response-Generation-Baselines/processed_output",
-        )
+    dialogues_g = topicalchat(
+        file_name="test_rare",
+        # data_path=os.environ["HOME"]
+        # + "/Response-Generation-Baselines/processed_output",
     )
+    g = (answer(build_gpt2_input(utts)) for utts in dialogues_g)
     data_io.write_lines("microsoft-gpt2.pred", g)
 
     # dialogue_test()
