@@ -72,6 +72,17 @@ python evaluation.py --pred_file ~/gunther/data/transformer_trained/test_rare_ep
                        'rouge2': 0.049791688778764095,
                        'rougeL': 0.16477289347786828}}
 ```
+* evaluated with cheating: `cd Response-Generation-Baselines && python3 test.py --save_path /docker-share/data/transformer_trained --epoch 20 --cheating`
+```shell script
+{'f1-scores': {'rouge-1': 0.19093731158816457,
+               'rouge-2': 0.04742658960617347,
+               'rouge-l': 0.1866664146489359},
+ 'huggingface-rouge': {'rouge1': 0.19244537896234243,
+                       'rouge2': 0.049771674296700374,
+                       'rougeL': 0.16611361064019586}}
+```
+-> cheating makes no big difference!
+
 #### huggingface-evaluation
 * [coqa-distilbart-xsum-12-1](https://app.wandb.ai/dertilo/seq2seq-chatbot/runs/3ll696ve/overview?workspace=user-)
 ```shell script
