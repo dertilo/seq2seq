@@ -1,3 +1,4 @@
+import argparse
 import os
 from pprint import pprint
 from typing import List, Dict
@@ -64,23 +65,44 @@ def batch_generate(
     return dec
 
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+    "--model_path",
+    default="topicalchat-distilbart-xsum-12-1/best_tfmr",
+    type=str,
+)
+parser.add_argument(
+    "--source_file",
+    default=os.environ["HOME"] + "/data/QA/topical-chat/processed_output/test_rare.src",
+    type=str,
+)
+parser.add_argument(
+    "--target_file",
+    default=os.environ["HOME"] + "/data/QA/topical-chat/processed_output/test_rare.tgt",
+    type=str,
+)
+parser.add_argument(
+    "--pred_file",
+    default="test_rare.pred",
+    type=str,
+)
+
 if __name__ == "__main__":
-    HOME = os.environ["HOME"]
+    args = parser.parse_args()
+
     rouge = Rouge()
-    source_file = HOME + "/data/seq2seq_dialogue/val.source"
     sources = [
         " "  # beginning with space? see: https://github.com/huggingface/transformers/blob/5ddd8d6531c8c49fdd281b55b93f6c81c9826f4b/examples/summarization/bart/evaluate_cnn.py#L66
         + x.rstrip()
-        for x in data_io.read_lines(source_file)
+        for x in data_io.read_lines(args.source_file)
     ]
-    target_file = HOME + "/data/seq2seq_dialogue/val.target"
-    model_file = "coqa-distilbart-xsum-12-1/best_tfmr"
+    targets = list(data_io.read_lines(args.target_file))
     hyps = list(
         generate_summaries_or_translations(
-            sources, model_file, batch_size=8, fp16=True,
+            sources, args.model_path, batch_size=8, fp16=True,
         )
     )
-
-    targets = list(data_io.read_lines(target_file))
+    data_io.write_lines(args.pred_file,hyps)
 
     pprint(calc_rouge_scores(hyps,targets))
