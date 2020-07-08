@@ -21,7 +21,7 @@ DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 def generate_summaries_or_translations(
     examples: list,
-    model_name_or_ckpt: str,
+    model_name: str,
     batch_size: int = 8,
     device: str = DEFAULT_DEVICE,
     fp16=False,
@@ -30,17 +30,11 @@ def generate_summaries_or_translations(
     """
     based on: transformers/examples/seq2seq/run_eval.py
     """
-    if model_name_or_ckpt.endswith(".ckpt"):
-        checkpoint = SummarizationModule.load_from_checkpoint(model_name_or_ckpt)
-        tokenizer = checkpoint.tokenizer
-        model = checkpoint.model.to(device)
-    else:
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_ckpt).to(device)
-        tokenizer = AutoTokenizer.from_pretrained(model_name_or_ckpt)
-
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
     if fp16:
         model = model.half()
 
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     # update config with summarization specific params
     use_task_specific_params(model, "summarization")
 
@@ -78,7 +72,7 @@ if __name__ == "__main__":
         for x in data_io.read_lines(source_file, limit=100)
     ]
     target_file = HOME + "/data/seq2seq_dialogue/val.target"
-    model_file = "coqa-distilbart-xsum-12-1/val_avg_rouge2=0.1955-step_count=24.ckpt"
+    model_file = "coqa-distilbart-xsum-12-1/best_tfmr"
     hyps = list(
         generate_summaries_or_translations(
             sources, model_file, batch_size=8, fp16=True,
