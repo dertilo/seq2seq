@@ -71,7 +71,7 @@ if __name__ == "__main__":
     sources = [
         " "  # beginning with space? see: https://github.com/huggingface/transformers/blob/5ddd8d6531c8c49fdd281b55b93f6c81c9826f4b/examples/summarization/bart/evaluate_cnn.py#L66
         + x.rstrip()
-        for x in data_io.read_lines(source_file, limit=100)
+        for x in data_io.read_lines(source_file)
     ]
     target_file = HOME + "/data/seq2seq_dialogue/val.target"
     model_file = "coqa-distilbart-xsum-12-1/best_tfmr"
@@ -81,6 +81,6 @@ if __name__ == "__main__":
         )
     )
 
-    targets = list(data_io.read_lines(target_file, limit=100))
+    targets = list(data_io.read_lines(target_file))
 
     pprint(calc_rouge_scores(hyps,targets))

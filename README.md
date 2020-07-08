@@ -59,16 +59,38 @@ CUDA_VISIBLE_DEVICES=1 WANDB_MODE=dryrun python ../transformers/examples/seq2seq
 ```
 
 ## evaluating
-1. evaluate-rouge: `source activate huggingface && export PYTHONPATH=$HOME/transformers/examples` and `python evaluate.py`
-2. evaluate-coqa with [coqa-baselines](https://github.com/stanfordnlp/coqa-baselines)
-
+#### [DSTC9-Baseline](https://github.com/dertilo/Response-Generation-Baselines)
+* [Transformer trained by Shikib Mehri](https://drive.google.com/file/d/1fPB45RDs_BcJ8KZeYQiauK3W1RsdY2hM/view?usp=sharing)
+* [no cheating!](https://github.com/dertilo/Response-Generation-Baselines/commit/030d9335ef3b1f642ac76e86e1a0f52c4d8b9916)
+```shell script
+export PYTHONPATH=~/code/NLP/transformers/examples
+python evaluation.py --pred_file ~/gunther/data/transformer_trained/test_rare_epoch_20.pred --target_file ~/gunther/Response-Generation-Baselines/processed_output/test_rare.tgt
+{'f1-scores': {'rouge-1': 0.18832909781578547,
+               'rouge-2': 0.047195065416391825,
+               'rouge-l': 0.18423218591116589},
+ 'huggingface-rouge': {'rouge1': 0.1902879866916785,
+                       'rouge2': 0.049791688778764095,
+                       'rougeL': 0.16477289347786828}}
+```
+#### huggingface-evaluation
+* [coqa-distilbart-xsum-12-1](https://app.wandb.ai/dertilo/seq2seq-chatbot/runs/3ll696ve/overview?workspace=user-)
+```shell script
+(ml_gpu) [tilo-himmelsbach@gpu010 seq2seq]$ python evaluate_transformer.py 
+100%|████| 998/998 [14:02<00:00,  1.18it/s]
+{'f1-scores': {'rouge-1': 0.2750953579003743,
+               'rouge-2': 0.15929957668606087,
+               'rouge-l': 0.28888274540104353},
+ 'huggingface-rouge': {'rouge1': 0.3280108921933519,
+                       'rouge2': 0.19008676583777595,
+                       'rougeL': 0.324871404293655}}
+```
+#### [coqa-baselines-evaluation](https://github.com/stanfordnlp/coqa-baselines)
 ```shell script
 {'bart': {'em': 47.9, 'f1': 65.5, 'turns': 7983},
  'bart-danqi': {'em': 31.6, 'f1': 43.7, 'turns': 7983}, # TODO(tilo): why is danqi not working?
  'cheatbot': {'em': 94.7, 'f1': 97.3, 'turns': 7983}, # should be at 100 percent! but it is not!
  'echobot': {'em': 0.0, 'f1': 3.5, 'turns': 7983}}
 ```
-* trained for ~30 hours on 2 GPUs
 
 ## dash-frontend
 1. on gunther, get model from hpc: `rsync -avz -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" --exclude=.git tilo-himmelsbach@gateway.hpc.tu-berlin.de:/home/users/t/tilo-himmelsbach/data/bart_seq2seq_dialogue_continued/checkpointepoch=2.ckpt ~/data/bart_coqa_seq2seq/`
