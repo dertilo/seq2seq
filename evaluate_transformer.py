@@ -16,6 +16,8 @@ from transformers import (
 )
 from util import data_io
 
+from evaluation import calc_rouge_scores
+
 DEFAULT_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -81,10 +83,4 @@ if __name__ == "__main__":
 
     targets = list(data_io.read_lines(target_file, limit=100))
 
-    scores = rouge.get_scores(hyps, targets, avg=True)
-
-    pprint({s+"-f1":v for s,d in scores.items() for k,v in d.items() if k=="f"})
-
-    # bleu_scores = corpus_bleu(hyps, targets).score
-    #
-    # pprint(bleu_scores)
+    pprint(calc_rouge_scores(hyps,targets))
