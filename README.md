@@ -38,7 +38,7 @@ OMP_NUM_THREADS=2 wandb init # on frontend
 
 export PYTHONPATH=~/transformers/examples
 CUDA_VISIBLE_DEVICES=1 WANDB_MODE=dryrun python ../transformers/examples/seq2seq/finetune.py \
---data_dir=$HOME/data/seq2seq_dialogue \
+--data_dir=$HOME/data/seq2seq_dialogue_topicalchat \
 --model_name_or_path=sshleifer/distilbart-xsum-12-1 \
 --learning_rate=3e-5 \
 --max_source_length=1024 \
@@ -82,7 +82,28 @@ python evaluation.py --pred_file ~/gunther/data/transformer_trained/test_rare_ep
                        'rougeL': 0.16611361064019586}}
 ```
 -> cheating makes no big difference!
-
+* trained no cheating
+```shell script
+python evaluation.py --pred_file ~/gunther/Response-Generation-Baselines/no_cheating/test_rare_epoch_4.pred
+{'f1-scores': {'rouge-1': 0.20489976209624824,
+               'rouge-2': 0.05517858678345437,
+               'rouge-l': 0.20176257339875925},
+ 'huggingface-rouge': {'rouge1': 0.20666656629287844,
+                       'rouge2': 0.05805848849887245,
+                       'rougeL': 0.17717360382688946}}
+```
+* trained and evaluated WITH cheating!
+    * train: `python3 train.py --use_knowledge --transformer --batch_size=8 --save_path cheating/ --num_layers=1 --num_epochs=10 --cheating`
+    * evaluate: `CUDA_VISIBLE_DEVICES=1 python3 test.py --save_path cheating/ --epoch 2 --cheating`
+```shell script
+python evaluation.py --pred_file ~/gunther/Response-Generation-Baselines/cheating/test_rare_epoch_2.pred
+{'f1-scores': {'rouge-1': 0.6055093446583356,
+               'rouge-2': 0.3462308704683284,
+               'rouge-l': 0.6084092709520058},
+ 'huggingface-rouge': {'rouge1': 0.6033157929844915,
+                       'rouge2': 0.3507478256602802,
+                       'rougeL': 0.5709768954176836}}
+```
 #### huggingface-evaluation
 * [coqa-distilbart-xsum-12-1](https://app.wandb.ai/dertilo/seq2seq-chatbot/runs/3ll696ve/overview?workspace=user-)
 ```shell script
@@ -94,6 +115,17 @@ python evaluation.py --pred_file ~/gunther/data/transformer_trained/test_rare_ep
  'huggingface-rouge': {'rouge1': 0.3280108921933519,
                        'rouge2': 0.19008676583777595,
                        'rougeL': 0.324871404293655}}
+```
+* [topicalchat](https://app.wandb.ai/dertilo/seq2seq-chatbot/runs/207otbiw/overview?workspace=user-)
+```shell script
+python evaluate_transformer.py --source_file ~/data/seq2seq_dialogue_topicalchat/test.source --target_file ~/data/seq2seq_dialogue_topicalchat/test.target
+100%|████| 1401/1401 [27:21<00:00,  1.17s/it]
+{'f1-scores': {'rouge-1': 0.2938204560963201,
+               'rouge-2': 0.1319923371771301,
+               'rouge-l': 0.2853012250506464},
+ 'huggingface-rouge': {'rouge1': 0.2980726989168491,
+                       'rouge2': 0.14077689234989404,
+                       'rougeL': 0.2667963920497738}}
 ```
 #### [coqa-baselines-evaluation](https://github.com/stanfordnlp/coqa-baselines)
 ```shell script
