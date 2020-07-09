@@ -96,13 +96,13 @@ python evaluation.py --pred_file ~/gunther/Response-Generation-Baselines/no_chea
     * train: `python3 train.py --use_knowledge --transformer --batch_size=8 --save_path cheating/ --num_layers=1 --num_epochs=10 --cheating`
     * evaluate: `CUDA_VISIBLE_DEVICES=1 python3 test.py --save_path cheating/ --epoch 2 --cheating`
 ```shell script
-python evaluation.py --pred_file ~/gunther/Response-Generation-Baselines/cheating/test_rare_epoch_2.pred
-{'f1-scores': {'rouge-1': 0.6055093446583356,
-               'rouge-2': 0.3462308704683284,
-               'rouge-l': 0.6084092709520058},
- 'huggingface-rouge': {'rouge1': 0.6033157929844915,
-                       'rouge2': 0.3507478256602802,
-                       'rougeL': 0.5709768954176836}}
+python evaluation.py --pred_file ~/gunther/Response-Generation-Baselines/cheating/test_rare_epoch_9.pred
+{'f1-scores': {'rouge-1': 0.6284242142836528,
+               'rouge-2': 0.382027446998092,
+               'rouge-l': 0.6279301955302672},
+ 'huggingface-rouge': {'rouge1': 0.6254876724740767,
+                       'rouge2': 0.3868426341376391,
+                       'rougeL': 0.5984314895063148}}
 ```
 #### huggingface-evaluation
 * [coqa-distilbart-xsum-12-1](https://app.wandb.ai/dertilo/seq2seq-chatbot/runs/3ll696ve/overview?workspace=user-)
@@ -116,9 +116,9 @@ python evaluation.py --pred_file ~/gunther/Response-Generation-Baselines/cheatin
                        'rouge2': 0.19008676583777595,
                        'rougeL': 0.324871404293655}}
 ```
-* [topicalchat](https://app.wandb.ai/dertilo/seq2seq-chatbot/runs/207otbiw/overview?workspace=user-)
+* [topicalchat](https://app.wandb.ai/dertilo/seq2seq-chatbot/runs/15oezher/overview?workspace=user-)
 ```shell script
-python evaluate_transformer.py --source_file ~/data/seq2seq_dialogue_topicalchat/test.source --target_file ~/data/seq2seq_dialogue_topicalchat/test.target
+python evaluate_transformer.py --model_path topicalchat-distilbart-xsum-12-1/best_tfmr --source_file ~/data/seq2seq_dialogue_topicalchat/test.source --target_file ~/data/seq2seq_dialogue_topicalchat/test.target
 100%|████| 1401/1401 [27:21<00:00,  1.17s/it]
 {'f1-scores': {'rouge-1': 0.2938204560963201,
                'rouge-2': 0.1319923371771301,
@@ -143,3 +143,8 @@ python evaluate_transformer.py --source_file ~/data/seq2seq_dialogue_topicalchat
 
 # similar projects
 * https://github.com/NTU-SQUAD/transformers-coqa -> extractive QA! not generative!
+
+# [nlg-eval](https://github.com/Maluuba/nlg-eval)
+```shell script
+pip install git+https://github.com/Maluuba/nlg-eval.git@master
+```
