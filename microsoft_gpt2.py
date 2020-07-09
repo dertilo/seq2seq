@@ -1,4 +1,5 @@
 import os
+from pprint import pprint
 from typing import List
 
 from tqdm import tqdm
@@ -14,6 +15,8 @@ print("USING: %s" % DEFAULT_DEVICE)
 
 
 def build_gpt2_input(utterances: List[str]):
+    # assert all([isinstance(s,str) for s in utterances])
+    # pprint({k:u for k,u in enumerate(utterances)})
 
     utts = [
         tokenizer.encode(u + tokenizer.eos_token, return_tensors="pt")
@@ -32,13 +35,20 @@ def build_gpt2_input(utterances: List[str]):
 def topicalchat(
     file_name="train",
     data_path=os.environ["HOME"] + "/data/QA/topical-chat/processed_output",
+    limit=None,
 ):
-    backgrounds = data_io.read_lines(os.path.join(data_path, file_name) + ".fct")
-    dialogs = data_io.read_lines(os.path.join(data_path, file_name) + ".src")
-    targets = data_io.read_lines(os.path.join(data_path, file_name) + ".tgt")
+    backgrounds = data_io.read_lines(
+        os.path.join(data_path, file_name) + ".fct", limit=limit
+    )
+    dialogs = data_io.read_lines(
+        os.path.join(data_path, file_name) + ".src", limit=limit
+    )
+    targets = data_io.read_lines(
+        os.path.join(data_path, file_name) + ".tgt", limit=limit
+    )
     for b, d, t in tqdm(zip(backgrounds, dialogs, targets)):
         turns = d.split("_eos")[:-1] + [t.strip("_go").strip("_eos")]
-        yield [b] + turns
+        yield turns[-3:]
 
 
 def dialogue_test():
@@ -94,32 +104,38 @@ pip install git+https://github.com/huggingface/transformers.git@d714dfeaa8f019a6
 
 if __name__ == "__main__":
 
-    # tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-large")
-    # model = AutoModelWithLMHead.from_pretrained("microsoft/DialoGPT-large")
 
-    tokenizer = GPT2Tokenizer.from_pretrained("microsoft/DialoGPT-small")
+    tokenizer = GPT2Tokenizer.from_pretrained("microsoft/DialoGPT-large")
     model = (
-        GPT2LMHeadModel.from_pretrained("microsoft/DialoGPT-small")
+        GPT2LMHeadModel.from_pretrained("microsoft/DialoGPT-large")
         .to(DEFAULT_DEVICE)
         .eval()
     )
 
     def answer(input):
+        # print(input.shape)
         with torch.no_grad():
             chat_history_ids = model.generate(
-                input, max_length=1000, pad_token_id=tokenizer.eos_token_id
+                input, max_length=1000, pad_token_id=tokenizer.eos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                temperature=0.7,
+                # num_beams=3
             )
 
-        return tokenizer.decode(
-            chat_history_ids[:, input.shape[-1] :][0], skip_special_tokens=True,
-        )
+        output = tokenizer.decode(chat_history_ids[:, input.shape[-1]:][0],
+                                  skip_special_tokens=True, )
+        # print("OUTPUT: %s"%output)
+        return output
 
+
+    file_name = "valid_freq"
     dialogues_g = topicalchat(
-        file_name="test_rare",
-        # data_path=os.environ["HOME"]
-        # + "/Response-Generation-Baselines/processed_output",
+        file_name=file_name,
+        data_path=os.environ["HOME"]
+        + "/Response-Generation-Baselines/processed_output",
+        limit=None
     )
     g = (answer(build_gpt2_input(utts)) for utts in dialogues_g)
-    data_io.write_lines("microsoft-gpt2.pred", g)
+    data_io.write_lines("microsoft-gpt2-%s.pred"%file_name, g)
 
     # dialogue_test()
