@@ -2,7 +2,7 @@ rouge
 util@git+https://github.com/dertilo/util.git#egg=util
 # https://github.com/dertilo/transformers/tree/bart
 whoosh
-dash==1.12.0
+dash==2.15.0
 torch==1.4.0
 spacy
 # python -m spacy download en_core_web_sm
